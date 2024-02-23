@@ -120,8 +120,10 @@ export class FlowsService {
 
   async getDescriptionFlow(ctx:Message ,messageEntry: IParsedMessage) {
     ctx.subaccountSelected = messageEntry.content.title;
-    const subAccounts = await this.googleSpreadsheetService.getAccounts();
-    const limit = subAccounts.find(subaccount => subaccount.name === ctx.subaccountSelected).limit;
+    const subAccounts = await this.googleSpreadsheetService.getSubAccounts(ctx.accountSelected);
+    console.log('subAccounts',subAccounts);
+    console.log('ctx.subaccountSelected',ctx.subaccountSelected);
+    const limit = subAccounts.find(subaccount => subaccount.name.trim() === ctx.subaccountSelected).limit;
     ctx.limitSubaccount = limit;
     const clientPhone = messageEntry.clientPhone;
     const message = 'Ingresa la descripción del gasto';
