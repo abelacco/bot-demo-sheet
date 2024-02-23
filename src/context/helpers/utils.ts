@@ -1,6 +1,6 @@
 import { InteractiveListSection } from "src/builder-templates/interface";
 import { MODALITY, PACK, PACK_ID, PLAN } from "./constants";
-
+const moment = require('moment-timezone');
 export class Utilities {
 
     static findPlanDetails(pack_id: string, modality: string) {
@@ -37,9 +37,15 @@ export class Utilities {
         return this.parseFullName(fullName.split(' ')[0]);
     }
 
+    // static today() {
+    //     const today = new Date();
+    //     const todayString = today.toLocaleDateString('es-PE');
+    //     return todayString;
+    // }
+
     static today() {
-        const today = new Date();
-        const todayString = today.toLocaleDateString('es-PE');
+        const today = moment.tz('America/Lima');
+        const todayString = today.format('DD/MM/YYYY');
         return todayString;
     }
 

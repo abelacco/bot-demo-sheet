@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BuilderTemplatesService } from 'src/builder-templates/builder-templates.service';
-import { BTN_ID, BTN_OPT_CONFIRM_DNI, BTN_OPT_CONFIRM_GENERAL, BTN_OPT_CURRENT_DATE, BTN_OPT_PAYMENT, BTN_OPT_REPEAT, MENU, NAME_TEMPLATES, PACK, PAYMENTSTATUS, STEPS } from 'src/context/helpers/constants';
+import { BTN_ID, BTN_OPT_CONFIRM_DNI, BTN_OPT_CONFIRM_GENERAL, BTN_OPT_CURRENT_DATE, BTN_OPT_PAYMENT, BTN_OPT_REPEAT, BTN_TITLE, MENU, NAME_TEMPLATES, PACK, PAYMENTSTATUS, STEPS } from 'src/context/helpers/constants';
 import { Message } from 'src/context/entities/message.entity';
 import { UserService } from 'src/user/user.service';
 import { GeneralServicesService } from 'src/general-services/general-services.service';
@@ -65,7 +65,8 @@ export class FlowsService {
   async subAccountsListFlow(ctx:Message ,messageEntry: IParsedMessage) {
     const clientPhone = messageEntry.clientPhone;
     const content = messageEntry.content?.title || messageEntry.content;
-    if(content !== 'Ver más') {
+
+    if (content !== 'Ver más' && content !== BTN_TITLE.SAME_ACCOUNT) {
       const account = content;
       ctx.accountSelected = account;
       const accounts = await this.googleSpreadsheetService.getAccounts();
@@ -119,10 +120,8 @@ export class FlowsService {
 
 
   async getDescriptionFlow(ctx:Message ,messageEntry: IParsedMessage) {
-    ctx.subaccountSelected = messageEntry.content.title;
+    ctx.subaccountSelected ? '' : ctx.subaccountSelected = messageEntry.content.title;
     const subAccounts = await this.googleSpreadsheetService.getSubAccounts(ctx.accountSelected);
-    console.log('subAccounts',subAccounts);
-    console.log('ctx.subaccountSelected',ctx.subaccountSelected);
     const subAccount = subAccounts.find(subaccount => subaccount.name === ctx.subaccountSelected);
     const limitSubaccount = subAccount.limit;
     ctx.limitSubaccount = limitSubaccount;

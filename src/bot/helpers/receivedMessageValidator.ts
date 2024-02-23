@@ -81,11 +81,15 @@ export const receivedMessageValidator = (
         if(hasSpecificContentId(entryMessage,BTN_ID.NEW_EXPENSE) ) {
           return 'accountsListFlow';
         } 
-        } else if(hasSpecificContentId(entryMessage,BTN_ID.SAME_ACCOUNT)){
+        else if(hasSpecificContentId(entryMessage,BTN_ID.SAME_ACCOUNT)){
           return 'subAccountsListFlow';
-        } else if(hasSpecificContentId(entryMessage,BTN_ID.SAME_SUBACCOUNT)){
+        }
+
+        else {
           return 'getDescriptionFlow';
         }
+      }
+      
         return 'NOT_VALID';
     default:
       return 'NOT_VALID';
