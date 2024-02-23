@@ -309,7 +309,7 @@ export const BTN_OPT_REPEAT = [
   },
   {
     id: BTN_ID.SAME_ACCOUNT,
-    title: BTN_TITLE.SAME_SUBACCOUNT,
+    title: BTN_TITLE.SAME_ACCOUNT,
   },
   {
     id: BTN_ID.SAME_SUBACCOUNT,
