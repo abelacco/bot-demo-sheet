@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 
 @Injectable()
 export class SenderService {
   async sendMessages(messageClient: any) {
-    console.log('enviando mensaje, body: ', messageClient);
+    Logger.log(`Mensaje a enviar ${JSON.stringify(messageClient)}`, 'SENDER SERVICE');
     try {
-      const prueba = await axios.post(
+      const response = await axios.post(
         `https://graph.facebook.com/v18.0/${process.env.PHONE_ID}/messages`, messageClient,
         {
           headers: {
@@ -15,10 +15,11 @@ export class SenderService {
           },
         },
       );
-      console.log('prueba', prueba.status);
+      Logger.log(`STATUS ${response.status}`, 'SENDER SERVICE');
 
     } catch (error) {
-      console.log(error.response.data.error.message);
+      Logger.error(`Mensaje: ${error.response.data.error.message}`, 'SENDER SERVICE');
+      Logger.error(`Detalle: ${error.response.data.error.error_data.details}`, 'SENDER SERVICE');
       throw new Error(error.response.data.error.message);
     }
   }

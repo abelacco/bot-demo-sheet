@@ -9,7 +9,7 @@ export class WspWebHookController {
   constructor(private readonly wspWebHookService: WspWebHookService) {}
 
   // Entrada de mensajes desde WhatsApp
-  @Post('/webHook')
+  @Post()
   @HttpCode(200)
    proccess(@Body() messageWSP: WspReceivedMessageDto) {
     try {
@@ -22,7 +22,7 @@ export class WspWebHookController {
     }
   }
 
-  @Get('/webHook')
+  @Get()
   find(@Query() wspQueries: WspQueriesDto) {
     try {
       return this.wspWebHookService.validateWebHook(wspQueries);

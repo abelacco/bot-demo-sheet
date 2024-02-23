@@ -2,9 +2,9 @@ export interface WspReceivedMessageDto {
   entry: Array<{
     changes: Array<{
       value: {
-        contacts: Array<IContact>;
-        messages: Array<IMessage>;
-        statuses: [{
+        contacts?: Array<IContact>;
+        messages?: Array<IMessage>;
+        statuses?: [{
           status: string;
         }]
       };
@@ -31,6 +31,7 @@ interface IMessage {
   interactive?: IInteractiveObject;
   button?: {
     payload: string;
+    text: string;
   };
 }
 
@@ -38,11 +39,20 @@ interface IImageObject {
   link?: string;
   id?: string;
   sha256?: string;
+  caption?: string;
+  mime_type?: string;
 }
 
 interface IInteractiveObject {
+  button_reply?: {
+    id: string;
+    title: string;
+  };
+  list_reply?: {
+    id: string;
+    title: string;
+    description: string;
+  };
   type: string;
-  title: string;
-  id: string;
-  description: string;
+
 }

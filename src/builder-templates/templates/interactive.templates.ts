@@ -1,4 +1,4 @@
-import { SCHUDULE_LIST, SPECIALITIES_LIST } from "src/common/dto/constants";
+import { SCHUDULE_LIST } from "src/context/helpers/constants";
 
 
 export class InteractiveTemplates {
@@ -68,65 +68,65 @@ export class InteractiveTemplates {
     }
 
 
-    static generateSpecialitiesList(phone: string) {
-        return {
-            messaging_product: 'whatsapp',
-            to: phone,
-            type: 'interactive',
-            interactive: {
-                type: 'list',
-                header: {
-                    type: 'text',
-                    text: 'Lista de especialidades 📋',
-                },
-                body: {
-                    text: 'Puedes elegir una de las siguientes especialidades o escribir el nombre de la especialidad que deseas',
-                },
-                footer: {
-                    text: 'Escribir ayuda para atención personalizada',
-                },
-                action: {
-                    button: 'Ver especialidades 🔎',
-                    sections: [
-                        {
-                            title: 'Especialidades',
-                            rows: SPECIALITIES_LIST
-                        },
-                    ],
-                },
-            },
-        };
-    }
+    // static generateSpecialitiesList(phone: string) {
+    //     return {
+    //         messaging_product: 'whatsapp',
+    //         to: phone,
+    //         type: 'interactive',
+    //         interactive: {
+    //             type: 'list',
+    //             header: {
+    //                 type: 'text',
+    //                 text: 'Lista de especialidades 📋',
+    //             },
+    //             body: {
+    //                 text: 'Puedes elegir una de las siguientes especialidades o escribir el nombre de la especialidad que deseas',
+    //             },
+    //             footer: {
+    //                 text: 'Escribir ayuda para atención personalizada',
+    //             },
+    //             action: {
+    //                 button: 'Ver especialidades 🔎',
+    //                 sections: [
+    //                     {
+    //                         title: 'Especialidades',
+    //                         rows: SPECIALITIES_LIST
+    //                     },
+    //                 ],
+    //             },
+    //         },
+    //     };
+    // }
 
-    static generateDoctorList(phone: string) {
-        return {
-            messaging_product: 'whatsapp',
-            to: phone,
-            type: 'interactive',
-            interactive: {
-                type: 'list',
-                header: {
-                    type: 'text',
-                    text: 'Lista de doctores 📋',
-                },
-                body: {
-                    text: 'Puedes elegir uno de los siguientes doctores',
-                },
-                footer: {
-                    text: 'Escribir ayuda para atención personalizada',
-                },
-                action: {
-                    button: 'Ver Doctores 🔎',
-                    sections: [
-                        {
-                            title: 'Doctores',
-                            rows: SPECIALITIES_LIST
-                        },
-                    ],
-                },
-            },
-        };
-    }
+    // static generateDoctorList(phone: string) {
+    //     return {
+    //         messaging_product: 'whatsapp',
+    //         to: phone,
+    //         type: 'interactive',
+    //         interactive: {
+    //             type: 'list',
+    //             header: {
+    //                 type: 'text',
+    //                 text: 'Lista de doctores 📋',
+    //             },
+    //             body: {
+    //                 text: 'Puedes elegir uno de los siguientes doctores',
+    //             },
+    //             footer: {
+    //                 text: 'Escribir ayuda para atención personalizada',
+    //             },
+    //             action: {
+    //                 button: 'Ver Doctores 🔎',
+    //                 sections: [
+    //                     {
+    //                         title: 'Doctores',
+    //                         rows: SPECIALITIES_LIST
+    //                     },
+    //                 ],
+    //             },
+    //         },
+    //     };
+    // }
 
     static generateHoursAvaible(phone: string) {
         return {

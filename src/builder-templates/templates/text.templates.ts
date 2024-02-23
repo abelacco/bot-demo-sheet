@@ -1,42 +1,34 @@
-import { DOCTOR_LIST, SCHUDULE_LIST, SPECIALITIES_LIST, TITLE_INT_BTN } from "src/common/dto/constants";
+import { MENU, SCHUDULE_LIST, TITLE_INT_BTN } from 'src/context/helpers/constants';
 
 
 export class TextTemplates {
 
 
-    static greetings(phone: string) {
+
+
+        static greetings(phone: string) {
         return {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'interactive',
             interactive: {
-                type: 'button',
+                type: 'list',
+                // header: {
+                //     type: 'text',
+                //     text: 'Opciones',
+                // },
                 body: {
-                    text: `¡Hola soy Carol tu asistente Bot de clínica carita feliz 👩‍⚕️🚀  \n\n¿Cómo podemos ayudarte hoy?\n\n**ESTO ES UNA DEMO CON FINES DE PRUEBAS Y LA INFORMACIÓN BRINDADA NO ES REAL, DESARROLLADO POR FAMILYBOTS**
-              `,
+                    text: 'Hola, ¿qué tal? ¿Cuéntanos, cómo podemos ayudarte? ✨',
+                },
+                footer: {
+                    text: 'Escribir ayuda para atención personalizada',
                 },
                 action: {
-                    buttons: [
+                    button: 'Ver menú 🔎',
+                    sections: [
                         {
-                            type: 'reply',
-                            reply: {
-                                id: 'see_specialities_button_id',
-                                title: '📆 Agendar una cita',
-                            },
-                        },
-                        {
-                            type: 'reply',
-                            reply: {
-                                id: 'specialist_button_id',
-                                title: '🔬 Laboratorio'
-                            },
-                        },
-                        {
-                            type: 'reply',
-                            reply: {
-                                id: 'consulta_button_id',
-                                title: '❓Otra consulta'
-                            },
+                            title: 'Menú',
+                            rows: MENU
                         },
                     ],
                 },
@@ -87,67 +79,20 @@ export class TextTemplates {
         };
     }
 
-    static generateSpecialitiesList(phone: string) {
+    static planesNutricionales(phone: string) {
         return {
             messaging_product: 'whatsapp',
             to: phone,
-            type: 'interactive',
-            interactive: {
-                type: 'list',
-                header: {
-                    type: 'text',
-                    text: 'Lista de especialidades 📋',
-                },
-                body: {
-                    text: 'Puedes elegir una de las siguientes especialidades o escribir el nombre de la especialidad que deseas',
-                },
-                footer: {
-                    text: 'Escribir ayuda para atención personalizada',
-                },
-                action: {
-                    button: 'Ver especialidades 🔎',
-                    sections: [
-                        {
-                            title: 'Especialidades',
-                            rows: SPECIALITIES_LIST
-                        },
-                    ],
-                },
+            type: 'document',
+            document: {
+                link: 'https://drive.google.com/file/d/1aNt0jA4n7fSNSNxBUQtonnA7L86o_5sl/view?usp=sharing',
+                filename: 'Planes Nutricionales.pdf',
             },
+
         };
     }
 
-    static generateDoctorList(phone: string) {
-        return {
-            messaging_product: 'whatsapp',
-            to: phone,
-            type: 'interactive',
-            interactive: {
-                type: 'list',
-                header: {
-                    type: 'text',
-                    text: 'Lista de doctores 📋',
-                },
-                body: {
-                    text: 'Puedes elegir uno de los siguientes doctores',
-                },
-                footer: {
-                    text: 'Escribir ayuda para atención personalizada',
-                },
-                action: {
-                    button: 'Ver Doctores 🔎',
-                    sections: [
-                        {
-                            title: 'Doctores',
-                            rows: DOCTOR_LIST
-                        },
-                    ],
-                },
-            },
-        };
-    }
-
-    static selectHoursOptions(phone: string) {
+    static confirmAntesDeEscogerPlan(phone: string) {
         return {
             messaging_product: 'whatsapp',
             to: phone,
@@ -155,22 +100,29 @@ export class TextTemplates {
             interactive: {
                 type: 'button',
                 body: {
-                    text: `Puedes buscar  disponibilidad por lo más pronto o por un día específico`,
+                    text: `¿Estás list@ para continuar?                    `,
                 },
                 action: {
                     buttons: [
                         {
                             type: 'reply',
                             reply: {
-                                id: 'accpt_dni',
-                                title: 'Lo más pronto 🕐',
+                                id: 'btn_si',
+                                title: '✅ Si',
                             },
                         },
                         {
                             type: 'reply',
                             reply: {
-                                id: 'retry_dni',
-                                title: 'Por día 📅',
+                                id: 'btn_no',
+                                title: '⛔️ No',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_dudas',
+                                title: '🤔 Tengo dudas',
                             },
                         },
                     ],
@@ -179,36 +131,115 @@ export class TextTemplates {
         };
     }
 
-    static generateHoursAvaible(phone: string) {
+    static cupoDisponible(phone: string) {
         return {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'interactive',
             interactive: {
-                type: 'list',
-                header: {
-                    type: 'text',
-                    text: 'Horarios disponibles 📋',
-                },
+                type: 'button',
                 body: {
-                    text: 'Puedes elegir uno de los siguientes horarios',
-                },
-                footer: {
-                    text: 'Escribir ayuda para atención personalizada',
+                    text: ` El cupo disponible más próximo es el 31/01/2024 ¿Deseas reservar?`,
                 },
                 action: {
-                    button: 'Ver Horarios 🔎',
-                    sections: [
+                    buttons: [
                         {
-                            title: 'Horarios',
-                            rows: SCHUDULE_LIST
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_si',
+                                title: '✅ Si',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_no',
+                                title: '⛔️ No',
+                            },
                         },
                     ],
                 },
             },
         };
     }
-    
+
+    static listaPlanes(phone: string) {
+        return {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'button',
+                body: {
+                    text: `Planes a elegir ✨`,
+                },
+                action: {
+                    buttons: [
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_si',
+                                title: 'Mi Mejor Versión 🧘‍♀️',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_no',
+                                title: 'APLV 🤱',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_dudas',
+                                title: 'Mi Luna Interior🌛',
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+    }
+
+    static tipoPlan(phone: string) {
+        return {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'button',
+                body: {
+                    text: `Acá puedes escoger la modalidad del plan que deseas adquirir.`,
+                },
+                action: {
+                    buttons: [
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_si',
+                                title: 'Intercambio ',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'Menú Semanal',
+                                title: 'Menú Semanal',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'btn_dudas',
+                                title: 'Menú Mensual',
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+    }
 
     static generatePaymentOptions(phone: string) {
         return {
@@ -255,7 +286,7 @@ export class TextTemplates {
             to: phone,
             type: 'text',
             text: {
-                body: '☝️ Para terminar, por favor realizar el yape al 99999999 a nombre de Caritas Felices \n\n**ESTO ES UNA DEMO, ESCRIBIR 1 PARA SEGUIR**',
+                body: '☝️ Para terminar, por favor realizar el yape al 99999999 a nombre de Diana Otero \n\n**ESTO ES UNA DEMO, ESCRIBIR 1 PARA SEGUIR**',
             },
         };
     }
@@ -350,7 +381,130 @@ export class TextTemplates {
             to: phone,
             type: 'text',
             text: {
-                body: '🙌\n\n**Gracias por participar en esta demostración. Este fue un ejemplo de cómo nuestro bot puede funcionar, basado en información de nuestras reuniones con los equipos de desarrollo y marketing. Si estás interesado en saber más sobre nuestros servicios y obtener una cotización personalizada, no dudes en contactarnos. ¡Estamos aquí para ayudarte!**',
+                body: '🙌\n\n**Gracias por participar en esta demostración. Este fue un ejemplo de cómo nuestro bot puede funcionar, basado en información proporcionada por el cliente. Si estás interesado en saber más sobre nuestros servicios y obtener una cotización personalizada, no dudes en contactarnos. ¡Estamos aquí para ayudarte!**',
+            },
+        };
+    }
+
+
+        // static generateSpecialitiesList(phone: string) {
+    //     return {
+    //         messaging_product: 'whatsapp',
+    //         to: phone,
+    //         type: 'interactive',
+    //         interactive: {
+    //             type: 'list',
+    //             header: {
+    //                 type: 'text',
+    //                 text: 'Lista de especialidades 📋',
+    //             },
+    //             body: {
+    //                 text: 'Puedes elegir una de las siguientes especialidades o escribir el nombre de la especialidad que deseas',
+    //             },
+    //             footer: {
+    //                 text: 'Escribir ayuda para atención personalizada',
+    //             },
+    //             action: {
+    //                 button: 'Ver especialidades 🔎',
+    //                 sections: [
+    //                     {
+    //                         title: 'Especialidades',
+    //                         rows: SPECIALITIES_LIST
+    //                     },
+    //                 ],
+    //             },
+    //         },
+    //     };
+    // }
+
+    static generateDoctorList(phone: string) {
+        return {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'list',
+                header: {
+                    type: 'text',
+                    text: 'Lista de doctores 📋',
+                },
+                body: {
+                    text: 'Puedes elegir uno de los siguientes doctores',
+                },
+                footer: {
+                    text: 'Escribir ayuda para atención personalizada',
+                },
+                action: {
+                    button: 'Ver Doctores 🔎',
+                    sections: [
+                        {
+                            title: 'Doctores',
+                            rows: MENU
+                        },
+                    ],
+                },
+            },
+        };
+    }
+
+    static selectHoursOptions(phone: string) {
+        return {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'button',
+                body: {
+                    text: `Puedes buscar  disponibilidad por lo más pronto o por un día específico`,
+                },
+                action: {
+                    buttons: [
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'accpt_dni',
+                                title: 'Lo más pronto 🕐',
+                            },
+                        },
+                        {
+                            type: 'reply',
+                            reply: {
+                                id: 'retry_dni',
+                                title: 'Por día 📅',
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+    }
+
+    static generateHoursAvaible(phone: string) {
+        return {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'list',
+                header: {
+                    type: 'text',
+                    text: 'Horarios disponibles 📋',
+                },
+                body: {
+                    text: 'Puedes elegir uno de los siguientes horarios',
+                },
+                footer: {
+                    text: 'Escribir ayuda para atención personalizada',
+                },
+                action: {
+                    button: 'Ver Horarios 🔎',
+                    sections: [
+                        {
+                            title: 'Horarios',
+                            rows: SCHUDULE_LIST
+                        },
+                    ],
+                },
             },
         };
     }
@@ -434,7 +588,7 @@ export class TextTemplates {
         const docName = 'Juan Perez';
         const speciality = 'Nutrición';
         const doctorPhone = '51999999999';
-        const office = '101';
+        const plan = 'Mi Mejor Versión - Intercambio';
         const fee = '50';
         const patientName = 'Roberto Suarez';
         const code = '123456';
@@ -444,31 +598,15 @@ export class TextTemplates {
             to: patientPhone,
             type: 'text',
             text: {
-                body: `✅ ¡Gracias por reservar con el Dr. ${docName}! 🧑‍⚕️ \n\nA continuación, los datos de tu cita. 🙌
-        Paciente: ${patientName}
-        Especialidad: ${speciality}
-        Fecha y Hora de la cita: ${dateString}
-        Consultorio: ${office}
-        Costo de la cita: S/${fee}
-        Celular Doctor: ${doctorPhone}
-        Identificación: ${code} \n\nMuchas gracias por reservar con Caritas Felices💯 \n\n Para mayor información acerca de la cita escribir al ${doctorPhone}`,
+                body: `
+                ¡Gracias por confiar en nuestro equipo!! 🧑‍⚕️A continuación, los datos de tu plan 🙌 \n\nEn breves te está escribiendo tu asesor personal para ayudarte en cualquier duda que tengas 🩵  
+                \n\nPaciente: ${patientName}\n\nFecha y Hora de la cita: ${dateString}\n\nPlan: ${plan}\n\nLink Formulario: 'https:/demo.com'\n\nCosto del plan: S/${fee}\n\nIdentificación: ${code} \n\nMuchas gracias por adquirir un plan con Diana Otero Nutrición💯 \n\n Para mayor información acerca de la cita escribir al ${doctorPhone}`,
             },
         };
     }
 
     
-    static invoiceTemplate(phone: string) {
-        return {
-            messaging_product: 'whatsapp',
-            to: phone,
-            type: 'document',
-            document: {
-                link: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                filename: 'Boleta.pdf',
-            },
 
-        };
-    }
     static reminder(phone: string) {
         return {
             messaging_product: 'whatsapp',
