@@ -123,7 +123,7 @@ export class FlowsService {
     const subAccounts = await this.googleSpreadsheetService.getSubAccounts(ctx.accountSelected);
     console.log('subAccounts',subAccounts);
     console.log('ctx.subaccountSelected',ctx.subaccountSelected);
-    const subAccount = subAccounts.find(subaccount => subaccount.name.trim() === ctx.subaccountSelected.trim());
+    const subAccount = subAccounts.find(subaccount => subaccount.name === ctx.subaccountSelected);
     const limitSubaccount = subAccount.limit;
     ctx.limitSubaccount = limitSubaccount;
     const clientPhone = messageEntry.clientPhone;

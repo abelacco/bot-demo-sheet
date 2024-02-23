@@ -133,7 +133,7 @@ export class GoogleSpreadsheetService {
         
         // Transform the rows into an array of objects with the relevant information
         const subAccounts = rows.filter(row => row._rawData[0] === accountName).map(row => ({
-          name: row._rawData[1], // Assuming this is the subpartida name
+          name: row._rawData[1].trim(), // Assuming this is the subpartida name
           limit: row._rawData[2], // Assuming this is the limit
           accumulated: row._rawData[3], // Assuming this is the accumulated value
           difference: row._rawData[4], // Assuming this is the difference
