@@ -8,7 +8,7 @@ export class GoogleSpreadsheetService {
   private jwtClient: JWT;
 
   constructor() {
-    const sheetId = '1j_nBJZs1XOwju0GcJ1Ad0L5nWojuVN-n7oZOUZmR3zg';
+    const sheetId = process.env.GOOGLE_SHEET_ID;
     if (!sheetId) {
       throw new Error('Sheet ID is required');
     }

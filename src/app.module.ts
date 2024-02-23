@@ -22,7 +22,7 @@ import { GoogleSpreadsheetModule } from './google-spreadsheet/google-spreadsheet
       validationSchema: JoiValidationSchema,
       isGlobal: true,
     }),
-    MongooseModule.forRoot(process.env.MONGODB),
+    MongooseModule.forRoot(`${process.env.MONGODB}/${process.env.DB_NAME}`),
     WspWebHookModule, SenderModule, CtxModule, BuilderTemplatesModule, FlowsModule, GeneralServicesModule , UserModule,BotModule, GoogleSpreadsheetModule ],
   controllers: [AppController],
   providers: [AppService],

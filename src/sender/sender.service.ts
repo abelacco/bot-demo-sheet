@@ -7,7 +7,7 @@ export class SenderService {
     Logger.log(`Mensaje a enviar ${JSON.stringify(messageClient)}`, 'SENDER SERVICE');
     try {
       const response = await axios.post(
-        `https://graph.facebook.com/v18.0/${process.env.PHONE_ID}/messages`, messageClient,
+        `https://graph.facebook.com/v19.0/${process.env.PHONE_ID}/messages`, messageClient,
         {
           headers: {
             'Content-Type': 'application/json',

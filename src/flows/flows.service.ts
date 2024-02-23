@@ -188,7 +188,7 @@ export class FlowsService {
 
    async getWhatsappMediaUrl({ imageId }: { imageId: string }) {
     const getImage = await axios.get(
-      `https://graph.facebook.com/v18.0/${imageId}`,
+      `https://graph.facebook.com/v19.0/${imageId}`,
       {
         headers: {
           'Content-Type': 'application/json',
