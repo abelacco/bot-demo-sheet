@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
-import { PAYMENTSTATUS, STEPS } from "../helpers/constants";
+import { STEPS } from "../helpers/constants";
 
 @Schema()
 export class Message extends Document {
@@ -12,6 +12,14 @@ export class Message extends Document {
     @Prop({
     })
     subaccountSelected: string;
+
+    @Prop({
+    })
+    subAccountPages: number;
+
+    @Prop({
+    })
+    currentPage: number;
 
     @Prop({
     })

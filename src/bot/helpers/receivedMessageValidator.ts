@@ -25,7 +25,7 @@ export const receivedMessageValidator = (
     case STEPS.INIT: // Respondo al primer saludo
       if (isTextMessage(entryMessage)) {
         // Debo llamar al servicio para responder
-        return 'initFlow';
+        return 'subAccountsListFlow';
       }
       // debo llamar al servicio para responder que no es el mensaje esperado
       return 'NOT_VALID';
@@ -36,7 +36,11 @@ export const receivedMessageValidator = (
       return 'NOT_VALID';
     case STEPS.SUBACCOUNT_SELECTED: // Manejo la subcuenta seleccionada
     if(isInteractiveMessage(entryMessage)) {
-      return 'getDescriptionFlow';
+      if(hasSpecificTitle(entryMessage, 'VER MÁS')) {
+        return 'subAccountsListFlow';
+      } else {
+        return 'getDescriptionFlow';
+      }
     }
     return 'NOT_VALID';
     case STEPS.DESCRIPTION_INSERTED: // Estoy esperando una confirmación de seguir con la compra

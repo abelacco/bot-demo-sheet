@@ -64,14 +64,17 @@ export class FlowsService {
 
   async subAccountsListFlow(ctx:Message ,messageEntry: IParsedMessage) {
     const clientPhone = messageEntry.clientPhone;
-    const account = messageEntry.content?.title || messageEntry.content;
-    ctx.accountSelected = account;
-    const accounts = await this.googleSpreadsheetService.getAccounts();
-    const limit = accounts.find(account => account.name === account).limit;
-    ctx.limitAccount = limit;
-    const subaccount = await this.googleSpreadsheetService.getSubAccounts(account);
+    const content = messageEntry.content?.title || messageEntry.content;
+    if(content !== 'Ver más') {
+      const account = content;
+      ctx.accountSelected = account;
+      const accounts = await this.googleSpreadsheetService.getAccounts();
+      const limit = accounts.find(acc => acc.name === account).limit;
+      ctx.limitAccount = limit;
+    }
+    const subAccounts = await this.loadSubAccountsPage(ctx);
     const buttonText = 'Ver mis subpartidas';
-    const sections = Utilities.generateOneSectionTemplate('Lista de subpartidas',subaccount); // Wrap sections inside an array
+    const sections = Utilities.generateOneSectionTemplate('Lista de subpartidas',subAccounts); // Wrap sections inside an array
     const headerText = 'Elige la subpartida que deseas registrar';
     const bodyText = 'Para escoger una subpartida, selecciona el botón de "Ver mi subpartidas"';
     const message = 'Selecciona una opción';
@@ -80,6 +83,39 @@ export class FlowsService {
     ctx.step = STEPS.SUBACCOUNT_SELECTED;
     await this.ctxService.updateCtx(ctx._id, ctx);
   }
+
+  async loadSubAccountsPage(ctx:Message) {
+    const currentPage = ctx.currentPage ? ctx.currentPage + 1 : 1;
+    const account = ctx.accountSelected;
+    const subAccounts = await this.googleSpreadsheetService.getSubAccounts(account);
+    const itemsPerPage = 9; // Muestra 9 elementos por página
+    const totalItems = subAccounts.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+  
+    // Selecciona los elementos de la página actual
+    let subAccountsPage = subAccounts.slice(startIndex, endIndex);
+  
+    // Si no es la última página, añade el objeto "ver más"
+    if (currentPage < totalPages) {
+      subAccountsPage.push({
+        // Asume que tienes una estructura específica para "ver más"
+        name: 'Ver más',
+        action: 'loadMore',
+        // Aquí puedes añadir cualquier otro campo que necesites para manejar la acción de "ver más"
+      });
+    }
+  
+    // Actualiza el contexto con la información de paginación actual
+    ctx.subAccountPages = totalPages;
+    ctx.currentPage = currentPage;
+
+    await this.ctxService.updateCtx(ctx._id, ctx);
+  
+    return subAccountsPage;
+  }
+  
 
 
   async getDescriptionFlow(ctx:Message ,messageEntry: IParsedMessage) {
