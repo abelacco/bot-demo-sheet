@@ -25,7 +25,7 @@ export const receivedMessageValidator = (
     case STEPS.INIT: // Respondo al primer saludo
       if (isTextMessage(entryMessage)) {
         // Debo llamar al servicio para responder
-        return 'initFlow';
+        return 'confirmExpenseFlow';
       }
       // debo llamar al servicio para responder que no es el mensaje esperado
       return 'NOT_VALID';
@@ -77,9 +77,16 @@ export const receivedMessageValidator = (
         return 'NOT_VALID';
       }  
     case STEPS.NEW_EXPENSE:
-      if(isTextMessage(entryMessage)) {
-        return 'accountsListFlow';
-      }
+      if(isInteractiveMessage(entryMessage)) {
+        if(hasSpecificContentId(entryMessage,BTN_ID.NEW_EXPENSE) ) {
+          return 'accountsListFlow';
+        } 
+        } else if(hasSpecificContentId(entryMessage,BTN_ID.SAME_ACCOUNT)){
+          return 'subAccountsListFlow';
+        } else if(hasSpecificContentId(entryMessage,BTN_ID.SAME_SUBACCOUNT)){
+          return 'getDescriptionFlow';
+        }
+        return 'NOT_VALID';
     default:
       return 'NOT_VALID';
   }

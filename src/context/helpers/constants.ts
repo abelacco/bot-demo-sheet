@@ -210,6 +210,8 @@ export const STEPS = {
 
 // MENSAJES Y ID DE MENSAJES INTERACTIVOS
 
+
+// DEPRECATED
 export const TITLE_INT_BTN = {
   INTRODUCTION_TEMPLATE_A1: 'Buscar cuarto 🛏️',
   INTRODUCTION_TEMPLATE_A2: '⚕️ Soy Hotel',
@@ -248,6 +250,10 @@ export const BTN_ID = {
   PAYMENT_YAPE: 'yape_plin',
   CURRENT_DATE: 'current_date',
   DIFFERENT_DATE: 'different_date',
+  RESET: 'reset',
+  NEW_EXPENSE: 'new_expense',
+  SAME_ACCOUNT: 'same_account',
+  SAME_SUBACCOUNT: 'same_subaccount',
 }
 
 export const BTN_TITLE = {
@@ -256,6 +262,12 @@ export const BTN_TITLE = {
   CONFIRM_GENERAL: '✅ Confirmar',
   CANCEL_GENERAL: '❌ Cancelar',
   PAYMENT_YAPE: 'Yape/Plin 📱',
+  CURRENT_DATE: 'Hoy',
+  DIFFERENT_DATE: 'Otra fecha',
+  RESET: 'Reset',
+  NEW_EXPENSE: 'Nuevo egreso',
+  SAME_ACCOUNT: 'Misma partida',
+  SAME_SUBACCOUNT: 'Misma subpartida',
 }
 
 export const BTN_OPT_CONFIRM_DNI = [
@@ -288,6 +300,21 @@ export const BTN_OPT_PAYMENT = [
     title: BTN_TITLE.PAYMENT_YAPE,
   },
 
+];
+
+export const BTN_OPT_REPEAT = [
+  {
+    id: BTN_ID.NEW_EXPENSE,
+    title: BTN_TITLE.NEW_EXPENSE,
+  },
+  {
+    id: BTN_ID.SAME_ACCOUNT,
+    title: BTN_TITLE.SAME_SUBACCOUNT,
+  },
+  {
+    id: BTN_ID.SAME_SUBACCOUNT,
+    title: BTN_TITLE.SAME_SUBACCOUNT,
+  },
 ];
 
 export const BTN_OPT_CURRENT_DATE = [

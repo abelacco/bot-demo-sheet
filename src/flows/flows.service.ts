@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BuilderTemplatesService } from 'src/builder-templates/builder-templates.service';
-import { BTN_ID, BTN_OPT_CONFIRM_DNI, BTN_OPT_CONFIRM_GENERAL, BTN_OPT_CURRENT_DATE, BTN_OPT_PAYMENT, MENU, NAME_TEMPLATES, PACK, PAYMENTSTATUS, STEPS } from 'src/context/helpers/constants';
+import { BTN_ID, BTN_OPT_CONFIRM_DNI, BTN_OPT_CONFIRM_GENERAL, BTN_OPT_CURRENT_DATE, BTN_OPT_PAYMENT, BTN_OPT_REPEAT, MENU, NAME_TEMPLATES, PACK, PAYMENTSTATUS, STEPS } from 'src/context/helpers/constants';
 import { Message } from 'src/context/entities/message.entity';
 import { UserService } from 'src/user/user.service';
 import { GeneralServicesService } from 'src/general-services/general-services.service';
@@ -179,7 +179,7 @@ export class FlowsService {
       ctx.registerDate = messageEntry.content;
     }
     const clientPhone = messageEntry.clientPhone;
-    const message = `¿Desear cargar a la partida ${ctx.accountSelected} el monto de S/. ${ctx.amount} con la descripción ${ctx.description} en la fecha ${ctx.registerDate}?`;
+    const message = `¿Desear cargar  a la subpartida ${ctx.subaccountSelected} perteneciente a la partida ${ctx.accountSelected} el montó de S/. ${ctx.amount}?\nDescripción ${ctx.description}\nFecha ${ctx.registerDate}?`;
     const buttons = BTN_OPT_CONFIRM_GENERAL;
     const template = this.builderTemplate.buildInteractiveButtonMessage(clientPhone,message,buttons);
     await this.senderService.sendMessages(template);
@@ -193,14 +193,12 @@ export class FlowsService {
     await this.googleSpreadsheetService.insertData(0,expense);
     const message = 'Se ha registrado tu gasto con éxito';
     const template = this.builderTemplate.buildTextMessage(clientPhone,message);
-    ctx.accountSelected = '';
-    ctx.subaccountSelected
     ctx.description = '';
     ctx.amount = 0;
     ctx.registerDate = '';
-    ctx.limitAccount = 0;
-    ctx.limitSubaccount = 0;
-    ctx.step = STEPS.NEW_EXPENSE;
+    ctx.currentPage = 0;
+    ctx.subAccountPages = 0;
+    await this.newExpenseFlow(ctx,messageEntry);
     await this.ctxService.updateCtx(ctx._id, ctx);
     await this.senderService.sendMessages(template);
   }
@@ -246,6 +244,16 @@ export class FlowsService {
     await this.senderService.sendMessages(template);
   }
 
+  async newExpenseFlow(ctx:Message ,messageEntry: IParsedMessage) {
+    const clientPhone = messageEntry.clientPhone;
+    const message = '¿Deseas registrar otro gasto?';
+    const buttons = BTN_OPT_REPEAT;
+    const template = this.builderTemplate.buildInteractiveButtonMessage(clientPhone,message,buttons);
+    await this.senderService.sendMessages(template);
+    ctx.step = STEPS.NEW_EXPENSE;
+    await this.ctxService.updateCtx(ctx._id, ctx);
+
+  }
 
    async getWhatsappMediaUrl({ imageId }: { imageId: string }) {
     const getImage = await axios.get(
