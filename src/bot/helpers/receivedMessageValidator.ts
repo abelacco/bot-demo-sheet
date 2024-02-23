@@ -25,7 +25,7 @@ export const receivedMessageValidator = (
     case STEPS.INIT: // Respondo al primer saludo
       if (isTextMessage(entryMessage)) {
         // Debo llamar al servicio para responder
-        return 'confirmExpenseFlow';
+        return 'initFlow';
       }
       // debo llamar al servicio para responder que no es el mensaje esperado
       return 'NOT_VALID';
