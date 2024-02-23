@@ -123,8 +123,9 @@ export class FlowsService {
     const subAccounts = await this.googleSpreadsheetService.getSubAccounts(ctx.accountSelected);
     console.log('subAccounts',subAccounts);
     console.log('ctx.subaccountSelected',ctx.subaccountSelected);
-    const limit = subAccounts.find(subaccount => subaccount.name.trim() === ctx.subaccountSelected).limit;
-    ctx.limitSubaccount = limit;
+    const subAccount = subAccounts.find(subaccount => subaccount.name.trim() === ctx.subaccountSelected.trim());
+    const limitSubaccount = subAccount.limit;
+    ctx.limitSubaccount = limitSubaccount;
     const clientPhone = messageEntry.clientPhone;
     const message = 'Ingresa la descripción del gasto';
     const template = this.builderTemplate.buildTextMessage(clientPhone,message);
