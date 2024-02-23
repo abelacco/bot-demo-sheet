@@ -120,9 +120,15 @@ export class FlowsService {
 
 
   async getDescriptionFlow(ctx:Message ,messageEntry: IParsedMessage) {
-    ctx.subaccountSelected ? '' : ctx.subaccountSelected = messageEntry.content.title;
-    const subAccounts = await this.googleSpreadsheetService.getSubAccounts(ctx.accountSelected);
-    const subAccount = subAccounts.find(subaccount => subaccount.name === ctx.subaccountSelected);
+    let subaccountSelected = '';
+    if(messageEntry.content.id && messageEntry.content.id === BTN_ID.SAME_SUBACCOUNT) {
+      subaccountSelected = ctx.subaccountSelected;
+    } else {
+      subaccountSelected = messageEntry.content.title;
+      ctx.subaccountSelected = subaccountSelected;
+    }
+      const subAccounts = await this.googleSpreadsheetService.getSubAccounts(ctx.accountSelected);
+    const subAccount = subAccounts.find(subaccount => subaccount.name === subaccountSelected);
     const limitSubaccount = subAccount.limit;
     ctx.limitSubaccount = limitSubaccount;
     const clientPhone = messageEntry.clientPhone;
