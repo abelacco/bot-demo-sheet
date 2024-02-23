@@ -19,7 +19,7 @@ export const receivedMessageValidator = (
 ) => {
   let currentStep = ctx.step;
   if( typeof entryMessage.content === 'string' && entryMessage.content.toUpperCase() === 'RESET') {
-    return 'cancelAppointmentFlow';
+    return 'resetExpenseFlow';
   }
   switch (currentStep) {
     case STEPS.INIT: // Respondo al primer saludo

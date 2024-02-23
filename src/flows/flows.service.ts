@@ -205,10 +205,15 @@ export class FlowsService {
 
   async resetExpenseFlow(ctx:Message ,messageEntry: IParsedMessage) {
     ctx.accountSelected = '';
+    ctx.subaccountSelected = '';
+    ctx.subAccountPages = 0;
+    ctx.currentPage = 0;
+    ctx.limitAccount = 0;
+    ctx.limitSubaccount = 0;
     ctx.description = '';
     ctx.amount = 0;
     ctx.registerDate = '';
-    ctx.step = STEPS.NEW_EXPENSE;
+    ctx.step = STEPS.INIT;
     await this.ctxService.updateCtx(ctx._id, ctx);
     const message = 'Se ha cancelado la operación';
     const template = this.builderTemplate.buildTextMessage(messageEntry.clientPhone,message);
