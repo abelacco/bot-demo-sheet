@@ -7,7 +7,11 @@ export class Message extends Document {
 
     @Prop({
     })
-    expenseTypeSelected: string;
+    accountSelected: string;
+
+    @Prop({
+    })
+    subaccountSelected: string;
 
     @Prop({
     })
@@ -46,8 +50,11 @@ export class Message extends Document {
 
     @Prop({
     })
-    limit: number;
+    limitAccount: number;
 
+    @Prop({
+    })
+    limitSubaccount: number;
 }
 
 

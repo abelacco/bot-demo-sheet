@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 
@@ -96,7 +96,7 @@ export class GoogleSpreadsheetService {
       }
     }
     
-    async getExpenseTypeWithLimits(): Promise<any[]> {
+    async getAccounts(): Promise<any[]> {
       try {
         await this.doc.loadInfo(); // Carga la información de la hoja de cálculo
         const sheet = this.doc.sheetsByTitle['partidas']; // Accede a la hoja por su título
@@ -106,18 +106,44 @@ export class GoogleSpreadsheetService {
         const rows:any = await sheet.getRows(); // Obtiene todas las filas de la hoja 'Partidas'
     
         // Transforma las filas en un array de objetos con la información relevante
-        const partidasWithLimits = rows.map(row => {
-          console.log(row._rawData);
+        const accounts = rows.map(row => {
           return {
-            expenseType: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
-            limit: row._rawData[1], // Accede a la propiedad 'limite' utilizando la notación de corchetes
+            name: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            limit: row._rawData[1], // Accede a la propiedad 'limite' utilizando la notación de corchetes,
+            accumulated: row._rawData[2], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            difference: row._rawData[3], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
           };
         });
     
-        return partidasWithLimits;
+        return accounts;
       } catch (error) {
         console.error('Error al recuperar las partidas con límites:', error);
         throw new Error('Failed to retrieve partidas with limits');
+      }
+    }
+
+    async getSubAccounts(accountName:string): Promise<any[]> {
+      try {
+        await this.doc.loadInfo(); // Load the spreadsheet information
+        const sheet = this.doc.sheetsByTitle['subpartidas']; // Access the sheet by its title
+        if (!sheet) {
+          throw new Error('The sheet "subcuentas" is not found in the document.');
+        }
+        const rows:any = await sheet.getRows(); // Get all rows from the "subcuentas" sheet
+        
+        // Transform the rows into an array of objects with the relevant information
+        const subAccounts = rows.filter(row => row._rawData[0] === accountName).map(row => ({
+          name: row._rawData[1], // Assuming this is the subpartida name
+          limit: row._rawData[2], // Assuming this is the limit
+          accumulated: row._rawData[3], // Assuming this is the accumulated value
+          difference: row._rawData[4], // Assuming this is the difference
+        }));
+        
+        return subAccounts;
+      }
+      catch (error) {
+        console.error('Error retrieving the subaccounts:', error);
+        throw new Error('Failed to retrieve subaccounts');
       }
     }
 
@@ -165,7 +191,6 @@ export class GoogleSpreadsheetService {
         
         // Find the row with the matching phone number
         const matchingRow = rows.find(row => row._rawData[1] === phoneNumber);
-        
         if (matchingRow) {
           // If a matching row is found, return the name and phoneNumber
           return {

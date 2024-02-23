@@ -19,7 +19,7 @@ export class SenderService {
 
     } catch (error) {
       Logger.error(`Mensaje: ${error.response.data.error.message}`, 'SENDER SERVICE');
-      Logger.error(`Detalle: ${error.response.data.error.error_data.details}`, 'SENDER SERVICE');
+      // Logger.error(`Detalle: ${error.response.data.error.error_data.details}`, 'SENDER SERVICE');
       throw new Error(error.response.data.error.message);
     }
   }

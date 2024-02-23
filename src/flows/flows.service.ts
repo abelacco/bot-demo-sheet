@@ -45,12 +45,12 @@ export class FlowsService {
     const template3 = this.builderTemplate.buildTextMessage(clientPhone,'*ESTO ES UN BOT DE PRUEBA DESARROLLADO POR THE FAMILY BOT \nNO ES UN CANAL OFICIAL DE DOERS, MAYOR INFORMACÓN DIRECTAMEN EN SUS RRSS*');
     await this.senderService.sendMessages(template3);
     await this.ctxService.updateCtx(ctx._id, ctx);
-    await this.listExpensesFlow(ctx,messageEntry);
+    await this.accountsListFlow(ctx,messageEntry);
   }
 
-  async listExpensesFlow(ctx:Message ,messageEntry: IParsedMessage) {
+  async accountsListFlow(ctx:Message ,messageEntry: IParsedMessage) {
     const clientPhone = messageEntry.clientPhone;
-    const expenses = await this.googleSpreadsheetService.getExpenseTypeWithLimits();
+    const expenses = await this.googleSpreadsheetService.getAccounts();
     const buttonText = 'Ver mi partidas';
     const sections = Utilities.generateOneSectionTemplate('Lista de partidas',expenses); // Wrap sections inside an array
     const headerText = 'Elige la partida que deseas registrar';
@@ -58,15 +58,35 @@ export class FlowsService {
     const message = 'Selecciona una opción';
     const template = this.builderTemplate.buildInteractiveListMessage(clientPhone,buttonText ,sections, headerText, bodyText ,message);
     await this.senderService.sendMessages(template);
-    ctx.step = STEPS.EXPENSETYPE_SELECTED;
+    ctx.step = STEPS.ACCOUNT_SELECTED;
     await this.ctxService.updateCtx(ctx._id, ctx);
   }
 
+  async subAccountsListFlow(ctx:Message ,messageEntry: IParsedMessage) {
+    const clientPhone = messageEntry.clientPhone;
+    const account = messageEntry.content?.title || messageEntry.content;
+    ctx.accountSelected = account;
+    const accounts = await this.googleSpreadsheetService.getAccounts();
+    const limit = accounts.find(account => account.name === account).limit;
+    ctx.limitAccount = limit;
+    const subaccount = await this.googleSpreadsheetService.getSubAccounts(account);
+    const buttonText = 'Ver mis subpartidas';
+    const sections = Utilities.generateOneSectionTemplate('Lista de subpartidas',subaccount); // Wrap sections inside an array
+    const headerText = 'Elige la subpartida que deseas registrar';
+    const bodyText = 'Para escoger una subpartida, selecciona el botón de "Ver mi subpartidas"';
+    const message = 'Selecciona una opción';
+    const template = this.builderTemplate.buildInteractiveListMessage(clientPhone,buttonText ,sections, headerText, bodyText ,message);
+    await this.senderService.sendMessages(template);
+    ctx.step = STEPS.SUBACCOUNT_SELECTED;
+    await this.ctxService.updateCtx(ctx._id, ctx);
+  }
+
+
   async getDescriptionFlow(ctx:Message ,messageEntry: IParsedMessage) {
-    ctx.expenseTypeSelected = messageEntry.content.title;
-    const expenses = await this.googleSpreadsheetService.getExpenseTypeWithLimits();
-    const limit = expenses.find(expense => expense.expenseType === ctx.expenseTypeSelected).limit;
-    ctx.limit = limit;
+    ctx.subaccountSelected = messageEntry.content.title;
+    const subAccounts = await this.googleSpreadsheetService.getAccounts();
+    const limit = subAccounts.find(subaccount => subaccount.name === ctx.subaccountSelected).limit;
+    ctx.limitSubaccount = limit;
     const clientPhone = messageEntry.clientPhone;
     const message = 'Ingresa la descripción del gasto';
     const template = this.builderTemplate.buildTextMessage(clientPhone,message);
@@ -88,12 +108,12 @@ export class FlowsService {
   async getDateFlow(ctx:Message ,messageEntry: IParsedMessage) {
     ctx.amount = messageEntry.content;
     const month = Utilities.getMonth().toString(); // Convert month to string
-    let acummulated = await this.googleSpreadsheetService.getAccumulatedByExpense(ctx.expenseTypeSelected, month);
-    acummulated.length === 0 ? acummulated = [{expenseType: ctx.expenseTypeSelected, total: 0}] : acummulated;
+    let acummulated = await this.googleSpreadsheetService.getAccumulatedByExpense(ctx.accountSelected, month);
+    acummulated.length === 0 ? acummulated = [{expenseType: ctx.accountSelected, total: 0}] : acummulated;
     const accumlatedCurrent = Number(acummulated[0].total) + ctx.amount;
-    const limit = ctx.limit;
+    const limit = ctx.limitAccount;
     if(accumlatedCurrent > limit) {
-      const message = `El monto acumulado de la partida ${ctx.expenseTypeSelected} es de S/. ${acummulated[0].total} más S/. ${ctx.amount} total de S/. ${accumlatedCurrent}, superando el límite de S/. ${limit}`;
+      const message = `Esta compra esta excendiendo el límite de la partida ${ctx.accountSelected}, el límite es de S/. ${limit} y con esta compra el acumulado sería de S/. ${accumlatedCurrent}, excede en S/. ${accumlatedCurrent - limit}`;
       const template = this.builderTemplate.buildTextMessage(messageEntry.clientPhone,message);
       await this.senderService.sendMessages(template);
     }
@@ -120,7 +140,7 @@ export class FlowsService {
       ctx.registerDate = messageEntry.content;
     }
     const clientPhone = messageEntry.clientPhone;
-    const message = `¿Desear cargar a la partida ${ctx.expenseTypeSelected} el monto de S/. ${ctx.amount} con la descripción ${ctx.description} en la fecha ${ctx.registerDate}?`;
+    const message = `¿Desear cargar a la partida ${ctx.accountSelected} el monto de S/. ${ctx.amount} con la descripción ${ctx.description} en la fecha ${ctx.registerDate}?`;
     const buttons = BTN_OPT_CONFIRM_GENERAL;
     const template = this.builderTemplate.buildInteractiveButtonMessage(clientPhone,message,buttons);
     await this.senderService.sendMessages(template);
@@ -134,18 +154,20 @@ export class FlowsService {
     await this.googleSpreadsheetService.insertData(0,expense);
     const message = 'Se ha registrado tu gasto con éxito';
     const template = this.builderTemplate.buildTextMessage(clientPhone,message);
-    ctx.expenseTypeSelected = '';
+    ctx.accountSelected = '';
+    ctx.subaccountSelected
     ctx.description = '';
     ctx.amount = 0;
     ctx.registerDate = '';
+    ctx.limitAccount = 0;
+    ctx.limitSubaccount = 0;
     ctx.step = STEPS.NEW_EXPENSE;
     await this.ctxService.updateCtx(ctx._id, ctx);
     await this.senderService.sendMessages(template);
-
   }
 
   async resetExpenseFlow(ctx:Message ,messageEntry: IParsedMessage) {
-    ctx.expenseTypeSelected = '';
+    ctx.accountSelected = '';
     ctx.description = '';
     ctx.amount = 0;
     ctx.registerDate = '';
@@ -154,7 +176,7 @@ export class FlowsService {
     const message = 'Se ha cancelado la operación';
     const template = this.builderTemplate.buildTextMessage(messageEntry.clientPhone,message);
     await this.senderService.sendMessages(template);
-    await this.listExpensesFlow(ctx,messageEntry);
+    await this.accountsListFlow(ctx,messageEntry);
   }
 
   async cancelAppointmentFlow(ctx:Message ,messageEntry: IParsedMessage) {

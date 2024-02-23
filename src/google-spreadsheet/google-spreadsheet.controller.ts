@@ -15,9 +15,14 @@ export class GoogleSpreadsheetController {
     return this.googleSpreadsheetService.getAvailableDay();
   }
 
-  @Get('expensetype')
+  @Get('accounts')
   getPartidas() {
-    return this.googleSpreadsheetService.getExpenseTypeWithLimits();
+    return this.googleSpreadsheetService.getAccounts();
+  }
+
+  @Get('subaccount/:account')
+  getSubaccounts(@Param('account') account: string) {
+    return this.googleSpreadsheetService.getSubAccounts(account);
   }
 
   @Get('user/:phone')

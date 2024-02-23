@@ -56,8 +56,8 @@ export class Utilities {
                             title: menuTitle,
                             rows: items.map((item:any, index:any) => ({
                                 id: `${index}`,
-                                title: item.expenseType,
-                                description: `Límite: ${item.limit}`,
+                                title: item.name,
+                                // description: `Acumulado: ${item.accumulated} Límite: ${item.limit} Disponible: ${item.difference}`,
                             })),
                     }
             ]
