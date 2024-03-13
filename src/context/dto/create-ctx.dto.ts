@@ -1,6 +1,6 @@
 import { IsDate, IsNumber, IsOptional, IsString } from "class-validator";
 
-export class CreateMessageDto {
+export class CreateCtxDto {
     @IsString()
     @IsOptional()
     clientName: string;

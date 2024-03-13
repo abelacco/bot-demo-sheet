@@ -1,8 +1,7 @@
-import e from 'express';
 import { IParsedMessage } from '../entities/messageParsed';
 import { WSP_MESSAGE_TYPES } from 'src/common/constants';
-import { Message } from 'src/context/entities/message.entity';
-import { BTN_ID, PACK_ID, STEPS } from 'src/context/helpers/constants';
+import { Ctx} from 'src/context/entities/ctx.entity';
+import { BTN_ID, STEPS } from 'src/context/helpers/constants';
 
 
 
@@ -14,7 +13,7 @@ import { BTN_ID, PACK_ID, STEPS } from 'src/context/helpers/constants';
 // Si recibe que el carrito de compras esta en el paso select_payment , entonces el mensaje que reciba debe ser de tipo interactive
 // Si recibe que el carrito de compras esta en el paso submit_voucher , entonces el mensaje que reciba debe ser de tipo image
 export const receivedMessageValidator = (
-  ctx: Message,
+  ctx: Ctx,
   entryMessage: IParsedMessage,
 ) => {
   let currentStep = ctx.step;

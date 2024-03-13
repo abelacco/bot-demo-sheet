@@ -1,4 +1,4 @@
-import { Message } from "src/context/entities/message.entity";
+import { Ctx} from "src/context/entities/ctx.entity";
 import { Utilities } from "src/context/helpers/utils";
 
 export class Expense {
@@ -9,14 +9,14 @@ export class Expense {
     descripcion: string;
     monto: number;
     colaborador: string;
-    constructor(message: Message) {
+    constructor(ctx: Ctx) {
       this.fregistro = Utilities.today();
-      this.fegreso = message.registerDate || '';
-      this.partida = message.accountSelected || '';
-      this.subpartida = message.subaccountSelected || '';
-      this.descripcion = message.description || '';
-      this.monto = message.amount || 0;
-      this.colaborador = message.workername || '';
+      // this.fegreso = ctx.registerDate || '';
+      // this.partida = ctx.accountSelected || '';
+      // this.subpartida = ctx.subaccountSelected || '';
+      // this.descripcion = ctx.description || '';
+      // this.monto = ctx.amount || 0;
+      // this.colaborador = ctx.workername || '';
     }
   
 }

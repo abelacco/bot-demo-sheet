@@ -45,6 +45,61 @@ export class GoogleSpreadsheetService {
       }
     }
 
+    async getProducts(): Promise<any[]> {
+      try {
+        await this.doc.loadInfo(); // Carga la información de la hoja de cálculo
+        const sheet = this.doc.sheetsByTitle['Principales']; // Accede a la hoja por su título
+        if (!sheet) {
+          throw new Error('La hoja de Partidas no se encuentra en el documento.');
+        }
+        const rows:any = await sheet.getRows(); // Obtiene todas las filas de la hoja 'Partidas'
+    
+        // Transforma las filas en un array de objetos con la información relevante
+        const accounts = rows.map(row => {
+          return {
+            id: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            name: row._rawData[1], // Accede a la propiedad 'limite' utilizando la notación de corchetes,
+            price: row._rawData[3], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            description: row._rawData[2], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            active: row._rawData[5], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+            modifiers: row._rawData[7], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+          };
+        });
+    
+        return accounts;
+      } catch (error) {
+        console.error('Error al conectarse:', error.response?.data || error.message);
+        throw new Error('Error al conectarse:');
+      }
+    }
+
+    async getSubProducts(): Promise<any[]> {
+      try {
+        await this.doc.loadInfo(); // Carga la información de la hoja de cálculo
+        const sheet = this.doc.sheetsByTitle['Extras']; // Accede a la hoja por su título
+        if (!sheet) {
+          throw new Error('La hoja de Partidas no se encuentra en el documento.');
+        }
+        const rows:any = await sheet.getRows(); // Obtiene todas las filas de la hoja 'Partidas'
+    
+        // Transforma las filas en un array de objetos con la información relevante
+        const accounts = rows.map(row => {
+          return {
+            id: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            name: row._rawData[1], // Accede a la propiedad 'limite' utilizando la notación de corchetes,
+            price: row._rawData[3], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            description: row._rawData[2], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            active: row._rawData[5], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+            modifiers: row._rawData[6], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+          };
+        });
+    
+        return accounts;
+      } catch (error) {
+        console.error('Error al conectarse:', error.response?.data || error.message);
+        throw new Error('Error al conectarse:');
+      }
+    }
 
     async getAvailableDay(): Promise<string> {
       try {

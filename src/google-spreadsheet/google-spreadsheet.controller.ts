@@ -10,6 +10,16 @@ export class GoogleSpreadsheetController {
     return this.googleSpreadsheetService.insertData(data.sheetIndex, data.rowData);
   }
 
+  @Get('get-products')
+  getProducts() {
+    return this.googleSpreadsheetService.getProducts();
+  }
+
+  @Get('get-subproducts')
+  getSubProducts() {
+    return this.googleSpreadsheetService.getSubProducts();
+  }
+
   @Get('availableday')
   getAvailableDay() {
     return this.googleSpreadsheetService.getAvailableDay();

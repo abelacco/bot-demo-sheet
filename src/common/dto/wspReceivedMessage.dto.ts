@@ -3,6 +3,10 @@ export interface WspReceivedMessageDto {
     changes: Array<{
       value: {
         contacts?: Array<IContact>;
+        metadata?: {
+          display_phone_number?: string;
+          phone_number_id?: string;
+        };
         messages?: Array<IMessage>;
         statuses?: [{
           status: string;

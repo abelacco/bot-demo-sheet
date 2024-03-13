@@ -1,5 +1,5 @@
 {
-  "name": "expense-bot",
+  "name": "demov3",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -35,6 +35,8 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "cloudinary": "^1.41.0",
+    "date-fns": "^3.3.1",
+    "google-auth-library": "^9.0.0",
     "google-spreadsheet": "^4.1.1",
     "joi": "^17.9.2",
     "moment": "^2.29.4",
@@ -45,8 +47,7 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
-    "streamifier": "^0.1.1",
-    "google-auth-library": "^9.0.0"
+    "streamifier": "^0.1.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
