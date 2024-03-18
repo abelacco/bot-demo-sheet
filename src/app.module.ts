@@ -16,6 +16,8 @@ import { BotModule } from './bot/bot.module';
 import { GoogleSpreadsheetModule } from './google-spreadsheet/google-spreadsheet.module';
 import { AiModule } from './ai/ai.module';
 import { HistoryModule } from './history/history.module';
+import { LangchainModule } from './langchain/langchain.module';
+import { PineconeModule } from './pinecone/pinecone.module';
 
 @Module({
   imports: [
@@ -25,7 +27,7 @@ import { HistoryModule } from './history/history.module';
       isGlobal: true,
     }),
     MongooseModule.forRoot(`${process.env.MONGODB}/${process.env.DB_NAME}`),
-    WspWebHookModule, SenderModule, CtxModule, BuilderTemplatesModule, FlowsModule, GeneralServicesModule , UserModule,BotModule, GoogleSpreadsheetModule, AiModule, HistoryModule ],
+    WspWebHookModule, SenderModule, CtxModule, BuilderTemplatesModule, FlowsModule, GeneralServicesModule , UserModule,BotModule, GoogleSpreadsheetModule, AiModule, HistoryModule, LangchainModule, PineconeModule ],
   controllers: [AppController],
   providers: [AppService],
 })

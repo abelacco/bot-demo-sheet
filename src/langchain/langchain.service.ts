@@ -1,0 +1,43 @@
+import { Injectable } from '@nestjs/common';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { PineconeStore } from "@langchain/pinecone";
+import { ChainIntentService } from './chain-intent.service';
+import { PineconeService } from 'src/pinecone/pinecone.service';
+
+@Injectable()
+export class LangchainService {
+
+  constructor(
+    private chainIntent: ChainIntentService,
+    private pineconeService: PineconeService
+    ) {}
+
+  async runChat(history: Array<{role: string; content: string}> = [], question: string) {
+    const pinecone = await this.pineconeService.initPinecone();
+    const index = pinecone.Index(process.env.PINECONE_INDEX_NAME);
+
+    const pastMessages = history.map((message) => {
+      return message.role === 'assistant' ? `AI: ${message.content}\n` : `Human: ${message.content}\n`;
+    }).join('\n');
+
+    const loadedVectorStore = await PineconeStore.fromExistingIndex(
+      new OpenAIEmbeddings({}),
+      {
+        pineconeIndex: index,
+        textKey: "text",
+      }
+    );
+
+    const chain = this.chainIntent.create(loadedVectorStore);
+    const sanitizedQuestion = question.trim().replace("\n", " ");
+
+    const response = await chain.invoke({
+      question: sanitizedQuestion,
+      chatHistory: pastMessages
+    });
+
+    return { response };
+  }
+
+
+}
