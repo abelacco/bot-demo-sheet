@@ -1,34 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { BuilderTemplatesService } from 'src/builder-templates/builder-templates.service';
-import {
-  BTN_ID,
-  BTN_OPT_CONFIRM_DNI,
-  BTN_OPT_CONFIRM_GENERAL,
-  BTN_OPT_CURRENT_DATE,
-  BTN_OPT_PAYMENT,
-  BTN_OPT_REPEAT,
-  BTN_TITLE,
-  MENU,
-  NAME_TEMPLATES,
-  PACK,
-  PAYMENTSTATUS,
-  STEPS,
-} from 'src/context/helpers/constants';
 import { Ctx } from 'src/context/entities/ctx.entity';
-import { UserService } from 'src/user/user.service';
-import { GeneralServicesService } from 'src/general-services/general-services.service';
 import axios from 'axios';
 import { IParsedMessage } from 'src/builder-templates/interface';
 import { CtxService } from 'src/context/ctx.service';
 import { SenderService } from 'src/sender/sender.service';
-import { Utilities } from 'src/context/helpers/utils';
 import { GoogleSpreadsheetService } from 'src/google-spreadsheet/google-spreadsheet.service';
-import { Expense } from 'src/google-spreadsheet/entities';
-import { UpdateCtxDto } from 'src/context/dto';
 import { getFullCurrentDate } from 'src/bot/helpers/currentDate';
 import { AiService } from 'src/ai/ai.service';
 import { HistoryService } from 'src/history/history.service';
-import { Product } from 'src/context/interface';
+import { GoogleCalendarService } from 'src/google-calendar/google-calendar.service';
+import { Utilities } from 'src/context/helpers/utils';
+import { LangchainService } from 'src/langchain/langchain.service';
 
 @Injectable()
 export class FlowsService {
@@ -38,8 +21,138 @@ export class FlowsService {
     private readonly historyService: HistoryService,
     private readonly senderService: SenderService,
     private readonly aiService: AiService,
+    private readonly langChainService: LangchainService,
     private readonly googleSpreadsheetService: GoogleSpreadsheetService,
+    private readonly googleCalendarService: GoogleCalendarService,
   ) {}
+
+  PROMPT_SCHEDULE = `
+  Como ingeniero de inteligencia artificial especializado en la programación de reuniones, tu objetivo es analizar la conversación y determinar la intención del cliente de programar una reunión, así como su preferencia de fecha y hora. La reunión durará aproximadamente 45 minutos y solo puede ser programada entre las 9am y las 4pm, de lunes a viernes, y solo para la semana en curso.
+
+  Fecha de hoy: {CURRENT_DAY}
+
+  Reuniones ya agendadas:
+  -----------------------------------
+  {AGENDA_ACTUAL}
+
+  Historial de Conversacion:
+  -----------------------------------
+  {HISTORIAL_CONVERSACION}
+
+  Ejemplos de respuestas adecuadas para sugerir horarios y verificar disponibilidad:
+  ----------------------------------
+  "Por supuesto, tengo un espacio disponible mañana, ¿a qué hora te resulta más conveniente?"
+  "Sí, tengo un espacio disponible hoy, ¿a qué hora te resulta más conveniente?"
+  "Lo siento, el miércoles a las 4 pm ya está reservado, pero tengo turnos disponibles a las 9 am, 10 am y 11 am. ¿Cuál prefieres?"
+  "Ciertamente, tengo varios huecos libres esta semana. Por favor, indícame el día y la hora que prefieres."
+  "Los turnos disponibles mas pronto son el martes a las 9 am, 10 am y 11 am. ¿Cuál prefieres?"
+
+  INSTRUCCIONES:
+  ----------------------------------
+  - No inicies con un saludo.
+  -Si el cliente pregunta disponibilidad sin especificar fecha ni hora:
+    Responde preguntando si tiene alguna fecha y hora en especial en mente.
+    Ejemplo de respuesta: "¿Tienes alguna fecha y hora específica en mente para nuestra reunión?"
+  -Si el cliente pregunta disponibilidad solo indicando la hora:
+    Verifica primero si hay disponibilidad para esa hora el día de hoy. Considera si la hora ya ha pasado.
+  -Si no hay disponibilidad hoy o la hora ya ha pasado, indica los turnos más próximos disponibles.
+    Ejemplo de respuesta: "Para hoy ya no tenemos disponibilidad a esa hora, pero los próximos espacios disponibles son [listar tres próximas horas disponibles]. ¿Te conviene alguno de estos horarios?"
+  -Si el cliente pregunta disponibilidad solo indicando la fecha:
+    Busca en esa fecha las 3 horas disponibles más próximas y pregunta si desea alguna de esas o si prefiere otra hora.
+    Ejemplo de respuesta: "Para el [fecha], tengo los siguientes horarios disponibles: [hora 1], [hora 2], [hora 3]. ¿Te gustaría reservar alguno de estos, o prefieres otra hora?"
+  -Si el cliente pregunta disponibilidad con fecha y hora:
+    Verifica si hay disponibilidad para esa fecha y hora.
+    Si está disponible, pide al cliente que confirme.
+    Si no está disponible, indica las fechas disponibles más próximas.
+    Ejemplo de respuesta: "Para el [fecha] a las [hora], tenemos disponibilidad. ¿Te gustaría confirmar este horario para nuestra reunión? 📅⏰"
+  - Si no hay disponibilidad: "Lo siento, pero no tenemos disponibilidad para esa hora. Los próximos espacios disponibles son [listar tres próximos horarios disponibles]. ¿Te gustaría reservar alguno de estos? 📅⏰"  - Las reuniones solo pueden ser programadas entre las 9am y las 4pm, de lunes a viernes.
+  - Cada reunion dura 45 minutos.
+  - Cada reunion empieza en punto. Es decir 9:00 , 10:00 , 11:00 , 12:00 , 13:00 , 14:00 , 15:00 , 16:00
+  - Las respuestas deben ser cortas y adecuadas para WhatsApp, utilizando emojis para mayor claridad y amabilidad.
+  - Utiliza la información del historial de conversción y la agenda para calcular las respuestas.
+`
+
+  generateSchedulePrompt = (summary: string, history: string) => {
+    const nowDate = Utilities.todayHour()
+    const mainPrompt = this.PROMPT_SCHEDULE
+        .replace('{AGENDA_ACTUAL}', summary)
+        .replace('{HISTORIAL_CONVERSACION}', history)
+        .replace('{CURRENT_DAY}', nowDate)
+    console.log('mainPrompt', mainPrompt)
+    return mainPrompt
+  }
+  async AGENDAR  (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string)  {
+    try {
+      const messageOne = 'dame un momento para consultar la agenda...';
+      const saveMessageOne = await this.historyService.setAndCreateAssitantMessage(
+        {...messageEntry},
+        messageOne,
+      );
+      await this.senderService.sendMessages(
+        this.builderTemplate.buildTextMessage(
+          messageEntry.clientPhone,
+          messageOne,
+        ),
+      );
+      const listAppoinments = await this.googleSpreadsheetService.getListAppointments();
+      const parsedListAppointments = Utilities.parseListAppointments(listAppoinments); 
+      const promptSchedule = this.generateSchedulePrompt(parsedListAppointments, historyParsed);
+      const messageTwo = await this.aiService.createChat([
+        {
+          role: 'system',
+          content: promptSchedule,
+        },
+        {
+          role: 'user',
+          content: `Cliente pregunta: ${messageEntry.content}`,
+        }
+      ]);
+      const chunks = messageTwo.split(/(?<!\d)\.\s+/g);
+      for (const chunk of chunks) {
+        const newMessage =
+          await this.historyService.setAndCreateAssitantMessage(
+            messageEntry,
+            chunk,
+          );
+        await this.senderService.sendMessages(
+          this.builderTemplate.buildTextMessage(
+            messageEntry.clientPhone,
+            chunk,
+          ),
+        );
+      }
+    } catch (err) {
+      console.log(`[ERROR]:`, err);
+      return;
+    }
+  }
+
+  async HABLAR (ctx: Ctx, messageEntry: IParsedMessage, historyParsed?: string)  {
+    try {
+     const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
+     const question = messageEntry.content;
+
+     const {response} = await this.langChainService.runChat(history, question);
+    const chunks = response.split(/(?<!\d)\.\s+/g);
+    for (const chunk of chunks) {
+      const newMessage =
+        await this.historyService.setAndCreateAssitantMessage(
+          messageEntry,
+          chunk,
+        );
+      await this.senderService.sendMessages(
+        this.builderTemplate.buildTextMessage(
+          messageEntry.clientPhone,
+          chunk,
+        ),
+      );
+    }
+      
+    } catch (err) {
+      console.log(`[ERROR]:`, err);
+      return;
+    }
+  }
 
   // FECHA DE HOY: {CURRENT_DAY}
   // INIT: {INIT}

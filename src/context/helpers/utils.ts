@@ -49,13 +49,56 @@ export class Utilities {
         return todayString;
     }
 
+    static todayHour() {
+        const today = moment.tz('America/Lima');
+        // Combinación inusual pero solicitada: formato de 24 horas con AM/PM
+        const todayString = today.format('DD/MM/YYYY hh:mm A');
+        return todayString;
+    }
+
     static getMonth() {
         const today = new Date();
         const month = today.getMonth() + 1; // getMonth() devuelve un valor de 0 a 11, por lo que se suma 1
         return String(month).padStart(2, '0'); // Asegura que el mes siempre tenga dos dígitos
     }
-    
 
+    // static parseListAppointments(appointments:any) {
+    //     moment.locale('es');
+    //     const list = appointments.reduce((prev, current) => {
+    //         const startDate = moment(current.date, "YYYY/MM/DD HH:mm:ss"); // Ajusta al formato de entrada si es necesario
+    //         return prev += [
+    //             `Espacio reservado (no disponible): `,
+    //             `Desde ${startDate.format('dddd Do [de] MMMM YYYY, h:mm a')} `,
+    //             `Hasta ${startDate.add(45, 'minutes').format('dddd Do [de] MMMM YYYY, h:mm a')} \n`,
+    //         ].join('')
+    //     }, '')
+    //     return list;    
+    // }
+    static parseListAppointments(appointments) {
+        moment.locale('es');  // Asegúrate de tener la localización en español para el formato de fecha.
+        const appointmentsByDate = {};  // Un objeto para agrupar las citas por fecha.
+    
+        appointments.forEach((appointment) => {
+            const startDate = moment(appointment.date, "YYYY/MM/DD HH:mm:ss");
+            const endDate = moment(startDate).add(45, 'minutes');
+            const dateKey = startDate.format('dddd D [de] MMMM YYYY');  // Clave para agrupar las citas.
+    
+            if (!appointmentsByDate[dateKey]) {
+                appointmentsByDate[dateKey] = [];  // Inicializa la lista para esta fecha si aún no existe.
+            }
+    
+            appointmentsByDate[dateKey].push(`${startDate.format('H:mm a')} - ${endDate.format('H:mm a')}`);
+        });
+    
+        // Construye la cadena de salida final.
+        let listOutput = "";
+        for (const [date, times] of Object.entries(appointmentsByDate)) {
+            listOutput += `${date}:\n${(times as string[]).join('\n')}\n`;
+        }
+    
+        return listOutput;
+    }
+    
     static generateOneSectionTemplate(menuTitle:string, items:any): InteractiveListSection[] {
             return [
                     {

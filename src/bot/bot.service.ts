@@ -124,14 +124,13 @@ export class BotService {
       {HISTORY}
       
       Posibles acciones a realizar:
-      1. INFO: Esta acción se debe realizar cuando el cliente desea conocer más sobre los platos disponibles o tiene preguntas específicas sobre el menú.
-      2. ORDER: Esta acción se debe realizar cuando el cliente está listo para hacer un pedido.
-      3. ADDRESS: Esta acción se debe realizar solo después de que el cliente ha confirmado su pedido y necesita proporcionar su dirección para la entrega.
-      4. PAYMENT: Esta acción se debe realizar solo después de que el cliente ha confirmado su pedido, proporcionado su dirección y está listo para elegir o confirmar su forma de pago.
+      1. AGENDAR: Esta acción se debe realizar cuando el cliente expresa su deseo de programar una cita.
+      2. HABLAR: Esta acción se debe realizar cuando el cliente desea hacer una pregunta o necesita más información.
+      3. CONFIRMAR: Esta acción se debe realizar cuando el cliente y el vendedor llegaron a un acuerdo mutuo proporcionando una fecha, dia y hora exacta sin conflictos de hora.
       -----------------------------
       Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
       
-      Respuesta ideal (INFO|ORDER|ADDRESS|PAYMENT):`.replace(
+      Respuesta ideal (AGENDAR|HABLAR|CONFIRMAR):`.replace(
         '{HISTORY}',
         historyParsed,
       );

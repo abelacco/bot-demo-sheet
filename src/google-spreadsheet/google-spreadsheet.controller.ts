@@ -10,6 +10,11 @@ export class GoogleSpreadsheetController {
     return this.googleSpreadsheetService.insertData(data.sheetIndex, data.rowData);
   }
 
+  @Get('get-appointments')
+  getAppointments() {
+    return this.googleSpreadsheetService.getListAppointments();
+  }
+
   @Get('get-products')
   getProducts() {
     return this.googleSpreadsheetService.getProducts();

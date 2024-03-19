@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { Utilities } from 'src/context/helpers/utils';
 
 @Injectable()
 export class GoogleSpreadsheetService {
@@ -42,6 +43,27 @@ export class GoogleSpreadsheetService {
       } catch (error) {
         console.error('Error al insertar datos en Google Sheets:', error);
         throw new Error('Failed to insert data into Google Sheets');
+      }
+    }
+
+    async getListAppointments(): Promise<any[]> {
+      try{
+        await this.doc.loadInfo();
+        const sheet = this.doc.sheetsByIndex[0];
+        const rows:any = await sheet.getRows();
+
+        const list = rows.map(row => {
+          return {
+            date: row._rawData[1], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+          };
+        });
+        // const prueba = Utilities.parseListAppointments(list);
+        // console.log(prueba)
+        return list;
+      }
+      catch (error) {
+        console.error('Error al recuperar las citas:', error);
+        throw new Error('Failed to retrieve appointments');
       }
     }
 

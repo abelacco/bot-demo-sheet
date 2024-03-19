@@ -8,11 +8,11 @@ export class AiService {
   private model: string;
 
   constructor() {
-    const apiKey = process.env.OPENAI_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL;
     this.openai = new OpenAI({ apiKey, timeout: 15 * 1000 });
     if (!apiKey || apiKey.length === 0) {
-      throw new Error('OPENAI_KEY is missing');
+      throw new Error('OPENAI_API_KEY is missing');
     }
 
     this.model = model;
