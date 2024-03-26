@@ -24,7 +24,38 @@ export class FlowsService {
     private readonly langChainService: LangchainService,
     private readonly googleSpreadsheetService: GoogleSpreadsheetService,
     private readonly googleCalendarService: GoogleCalendarService,
-  ) {}
+  ) { }
+
+  PROMPT_DETERMINATE_DATE = `
+  Como ingeniero de inteligencia artificial, tu rol principal es analizar las solicitudes de los clientes que buscan programar una cita. Las citas están disponibles de lunes a viernes, de 9 a.m. a 5 p.m. Debes examinar las solicitudes para determinar la preferencia del cliente en cuanto a la fecha y hora, ajustándolas según las expresiones dadas y nuestro horario de atención.
+
+  Fecha de hoy: {CURRENT_DAY}
+
+  Guía de Proceso:
+  1. Identifica la fecha y hora que el usuario solicita para su cita con base en su mensaje.
+  2. Ajusta las fechas de acuerdo a las expresiones de tiempo indicadas por el usuario. Por ejemplo, si el usuario solicita "la próxima semana", selecciona el primer día hábil del horario laboral. Si la solicitud es para "el próximo mes", determina y asigna el primer día hábil del próximo mes. Asegúrate que estos ajustes estén en línea con el horario de atención.
+     Ejemplo: Si hoy es 20 de marzo de 2024, "la próxima semana" se referiría a la semana del 25 de marzo, y "el próximo mes" se referiría a abril. La fecha debe ser "25/03/2024" y "01/04/2024" respectivamente.
+  3. Interpreta expresiones como "por la mañana" o "por la tarde" en "AM" o "PM" respectivamente, teniendo en cuenta que el horario de atención es de 9 AM a 5 PM.
+  4. Construye una respuesta en formato JSON con las propiedades "date", "hour", y "default":
+     - "date" debe contener la fecha determinada en el formato "dd/mm/yyyy". Si la fecha no puede ser establecida, utilízase "NF".
+     - "hour" se ajusta según se haya determinado "AM" o "PM". Si no se puede definir una hora, utilízase "NF".
+     - El campo "default" se usa solo si tanto "date" como "hour" resultan en "NF", solicitando al usuario que proporcione información más detallada.
+  
+  Formato de Respuesta Esperado:
+  {
+        "date": "dd/mm/yyyy" o "NF",
+        "hour": "AM" o "PM" o "NF",
+        "default": "" o "No hemos podido determinar una fecha y hora específicas para su cita. Por favor, suministre un día y un horario que estén dentro del rango de nuestro horario de atención, que es de lunes a viernes, de 9 AM a 5 PM."
+    }
+  
+  Recuerda ofrecer respuestas claras y concisas cuando sea factible. Si la consulta del usuario es confusa o no viable, utiliza el campo "default" para solicitar información adicional, siempre pidiéndolo cortésmente y respetando nuestro horario de atención.  `;
+
+  generateDeterminateDatePrompt = () => {
+    const nowDate = Utilities.todayHour()
+    const mainPrompt = this.PROMPT_DETERMINATE_DATE
+      .replace('{CURRENT_DAY}', nowDate)
+    return mainPrompt
+  }
 
   PROMPT_SCHEDULE = `
   Como ingeniero de inteligencia artificial especializado en la programación de reuniones, tu objetivo es analizar la conversación y determinar la intención del cliente de programar una reunión, así como su preferencia de fecha y hora. La reunión durará aproximadamente 45 minutos y solo puede ser programada entre las 9am y las 4pm, de lunes a viernes, y solo para la semana en curso.
@@ -75,17 +106,17 @@ export class FlowsService {
   generateSchedulePrompt = (summary: string, history: string) => {
     const nowDate = Utilities.todayHour()
     const mainPrompt = this.PROMPT_SCHEDULE
-        .replace('{AGENDA_ACTUAL}', summary)
-        .replace('{HISTORIAL_CONVERSACION}', history)
-        .replace('{CURRENT_DAY}', nowDate)
+      .replace('{AGENDA_ACTUAL}', summary)
+      .replace('{HISTORIAL_CONVERSACION}', history)
+      .replace('{CURRENT_DAY}', nowDate)
     console.log('mainPrompt', mainPrompt)
     return mainPrompt
   }
-  async AGENDAR  (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string)  {
+  async AGENDAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
     try {
       const messageOne = 'dame un momento para consultar la agenda...';
       const saveMessageOne = await this.historyService.setAndCreateAssitantMessage(
-        {...messageEntry},
+        { ...messageEntry },
         messageOne,
       );
       await this.senderService.sendMessages(
@@ -94,9 +125,7 @@ export class FlowsService {
           messageOne,
         ),
       );
-      const listAppoinments = await this.googleSpreadsheetService.getListAppointments();
-      const parsedListAppointments = Utilities.parseListAppointments(listAppoinments); 
-      const promptSchedule = this.generateSchedulePrompt(parsedListAppointments, historyParsed);
+      const promptSchedule = this.generateDeterminateDatePrompt();
       const messageTwo = await this.aiService.createChat([
         {
           role: 'system',
@@ -107,6 +136,7 @@ export class FlowsService {
           content: `Cliente pregunta: ${messageEntry.content}`,
         }
       ]);
+      console.log('messageTwo', messageTwo)
       const chunks = messageTwo.split(/(?<!\d)\.\s+/g);
       for (const chunk of chunks) {
         const newMessage =
@@ -121,33 +151,60 @@ export class FlowsService {
           ),
         );
       }
+      // const listAppoinments = await this.googleSpreadsheetService.getListAppointments();
+      // const parsedListAppointments = Utilities.parseListAppointments(listAppoinments);
+      // const promptSchedule = this.generateSchedulePrompt(parsedListAppointments, historyParsed);
+      // const messageTwo = await this.aiService.createChat([
+      //   {
+      //     role: 'system',
+      //     content: promptSchedule,
+      //   },
+      //   {
+      //     role: 'user',
+      //     content: `Cliente pregunta: ${messageEntry.content}`,
+      //   }
+      // ]);
+      // const chunks = messageTwo.split(/(?<!\d)\.\s+/g);
+      // for (const chunk of chunks) {
+      //   const newMessage =
+      //     await this.historyService.setAndCreateAssitantMessage(
+      //       messageEntry,
+      //       chunk,
+      //     );
+      //   await this.senderService.sendMessages(
+      //     this.builderTemplate.buildTextMessage(
+      //       messageEntry.clientPhone,
+      //       chunk,
+      //     ),
+      //   );
+      // }
     } catch (err) {
       console.log(`[ERROR]:`, err);
       return;
     }
   }
 
-  async HABLAR (ctx: Ctx, messageEntry: IParsedMessage, historyParsed?: string)  {
+  async HABLAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed?: string) {
     try {
-     const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
-     const question = messageEntry.content;
+      const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
+      const question = messageEntry.content;
 
-     const {response} = await this.langChainService.runChat(history, question);
-    const chunks = response.split(/(?<!\d)\.\s+/g);
-    for (const chunk of chunks) {
-      const newMessage =
-        await this.historyService.setAndCreateAssitantMessage(
-          messageEntry,
-          chunk,
+      const { response } = await this.langChainService.runChat(history, question);
+      const chunks = response.split(/(?<!\d)\.\s+/g);
+      for (const chunk of chunks) {
+        const newMessage =
+          await this.historyService.setAndCreateAssitantMessage(
+            messageEntry,
+            chunk,
+          );
+        await this.senderService.sendMessages(
+          this.builderTemplate.buildTextMessage(
+            messageEntry.clientPhone,
+            chunk,
+          ),
         );
-      await this.senderService.sendMessages(
-        this.builderTemplate.buildTextMessage(
-          messageEntry.clientPhone,
-          chunk,
-        ),
-      );
-    }
-      
+      }
+
     } catch (err) {
       console.log(`[ERROR]:`, err);
       return;
@@ -454,46 +511,46 @@ export class FlowsService {
     }
   }
 
-//   PROMPT_GET_PRODUCTS = `
-//   Basado en el historial de la conversación proporcionada y nuestra lista de productos disponibles, tu tarea es identificar y extraer las menciones finales de productos y adicionales realizadas por el cliente, organizándolos en grupos según su relación en el pedido. Considera que algunos productos pueden ser parte de un combo o tener adicionales especificados por el cliente.
-//   Historial de la Conversación:
-//   {CONVERSATION_HISTORY}
+  //   PROMPT_GET_PRODUCTS = `
+  //   Basado en el historial de la conversación proporcionada y nuestra lista de productos disponibles, tu tarea es identificar y extraer las menciones finales de productos y adicionales realizadas por el cliente, organizándolos en grupos según su relación en el pedido. Considera que algunos productos pueden ser parte de un combo o tener adicionales especificados por el cliente.
+  //   Historial de la Conversación:
+  //   {CONVERSATION_HISTORY}
 
-//   Lista de Productos Disponibles:
-//   {PRODUCT_LIST}
+  //   Lista de Productos Disponibles:
+  //   {PRODUCT_LIST}
 
-//   Instrucciones:
-//   1. Analiza detalladamente la conversación proporcionada para identificar todas las menciones de productos finales, incluyendo los platos principales, adicionales, toppings y cremas.
-//   2. Compara las menciones finales encontradas con la lista de productos disponibles que hemos proporcionado.
-//   3. Crea un array con los nombres de los productos y adicionales exactos según aparecen en nuestra lista de productos disponibles cuando encuentres una coincidencia.
-//   4. Si un producto mencionado por el cliente se encuentra en nuestra lista, inclúyelo en el array con el nombre exacto registrado en la base de datos.
-//   5. El array debe reflejar solo los productos y adicionales finales confirmados en la conversación, asegurándote de que cada elemento coincida con un producto de nuestra base de datos.
-//   6. Agrupa los productos , sus adicionales y cremas según cómo el cliente los ha confirmado en su pedido.
-//   7. Los productos iguales pero no relacionados directamente deben listarse por separado.
+  //   Instrucciones:
+  //   1. Analiza detalladamente la conversación proporcionada para identificar todas las menciones de productos finales, incluyendo los platos principales, adicionales, toppings y cremas.
+  //   2. Compara las menciones finales encontradas con la lista de productos disponibles que hemos proporcionado.
+  //   3. Crea un array con los nombres de los productos y adicionales exactos según aparecen en nuestra lista de productos disponibles cuando encuentres una coincidencia.
+  //   4. Si un producto mencionado por el cliente se encuentra en nuestra lista, inclúyelo en el array con el nombre exacto registrado en la base de datos.
+  //   5. El array debe reflejar solo los productos y adicionales finales confirmados en la conversación, asegurándote de que cada elemento coincida con un producto de nuestra base de datos.
+  //   6. Agrupa los productos , sus adicionales y cremas según cómo el cliente los ha confirmado en su pedido.
+  //   7. Los productos iguales pero no relacionados directamente deben listarse por separado.
 
-//   Ejemplo de Formato de Respuesta Esperado (solo el array):
-//   [
-//     [
-//         "Burger Deluxe"
-//     ],
-//     [
-//         "Burger Deluxe"
-//     ],
-//     [
-//         "Burger Clasica",
-//         "Adic, Chorizo*",
-//         "Adic, Plátano frito"
-//     ],
-//     [
-//         "Pepsi"
-//     ],
-//     [
-//         "Pepsi"
-//     ]
-// ]
-//   Asegúrate de que el array final sea una representación precisa de la última conversación con el cliente, utilizando los nombres reales de los productos y adicionales tal como están registrados en nuestra base de datos.
-//   `;
-PROMPT_GET_PRODUCTS=`Basándonos en la siguiente conversación entre un cliente y un vendedor, y considerando nuestra carta de menú detallada, tu tarea es identificar y listar todos los productos finales mencionados por el cliente, asegurándote de corregir y adaptar cualquier mención a los nombres exactos de los productos tal como aparecen en nuestra carta. Si en caso no exista el producto mencionado por el cliente entonces este no agregarlo a la respuesta.Considera los cambios realizados durante la conversación, como adiciones o eliminaciones de productos.
+  //   Ejemplo de Formato de Respuesta Esperado (solo el array):
+  //   [
+  //     [
+  //         "Burger Deluxe"
+  //     ],
+  //     [
+  //         "Burger Deluxe"
+  //     ],
+  //     [
+  //         "Burger Clasica",
+  //         "Adic, Chorizo*",
+  //         "Adic, Plátano frito"
+  //     ],
+  //     [
+  //         "Pepsi"
+  //     ],
+  //     [
+  //         "Pepsi"
+  //     ]
+  // ]
+  //   Asegúrate de que el array final sea una representación precisa de la última conversación con el cliente, utilizando los nombres reales de los productos y adicionales tal como están registrados en nuestra base de datos.
+  //   `;
+  PROMPT_GET_PRODUCTS = `Basándonos en la siguiente conversación entre un cliente y un vendedor, y considerando nuestra carta de menú detallada, tu tarea es identificar y listar todos los productos finales mencionados por el cliente, asegurándote de corregir y adaptar cualquier mención a los nombres exactos de los productos tal como aparecen en nuestra carta. Si en caso no exista el producto mencionado por el cliente entonces este no agregarlo a la respuesta.Considera los cambios realizados durante la conversación, como adiciones o eliminaciones de productos.
 Historial de la Conversación:
 --------------
 {CONVERSATION_HISTORY}
@@ -654,7 +711,7 @@ EJEMPLO SIN PRODUCTOS
   
   Recuerda detallar el pedido final del cliente utilizando la información proporcionada y siguiendo las especificaciones de la estructura del producto.
  `;
-  
+
   generatePromptBuildOrder = (history: string, validProducts: any) => {
     let validProductsParsed = JSON.stringify(validProducts);
     return this.PROMPT_BUILD_ORDER.replace(
@@ -702,15 +759,15 @@ EJEMPLO SIN PRODUCTOS
       console.log('ORDER:', order);
       const message = await this.buildOrderMessage(order);
       const newMessage = await this.historyService.setAndCreateAssitantMessage(
-            messageEntry,
-            message,
-          );
-        await this.senderService.sendMessages(
-          this.builderTemplate.buildTextMessage(
-            messageEntry.clientPhone,
-            message,
-          ),
-        );
+        messageEntry,
+        message,
+      );
+      await this.senderService.sendMessages(
+        this.builderTemplate.buildTextMessage(
+          messageEntry.clientPhone,
+          message,
+        ),
+      );
       // const chunks = text.split(/(?<!\d)\.\s+/g);
       // for (const chunk of chunks) {
       //   const newMessage =
@@ -766,45 +823,45 @@ EJEMPLO SIN PRODUCTOS
     return productsValidated;
   }
 
-  async  buildOrderMessage(orderArray) {
+  async buildOrderMessage(orderArray) {
     let message = "🍔 Tu pedido en LaBurger Lima:\n\n";
     let totalOrder = 0;
 
     orderArray.forEach(item => {
-        message += `${item.quantity}x ${item.name} - S/.${item.price}\n`;
-        if (item.combo.length > 0) {
-            message += "   Combo incluye:\n";
-            item.combo.forEach(comboItem => {
-                message += `   - ${comboItem.name}\n`; // Asumimos que los combos no modifican el precio
-            });
-        }
-        if (item.toppings.length > 0) {
-            message += "   Adicionales:\n";
-            item.toppings.forEach(topping => {
-                message += `   - ${topping.name}: S/.${topping.price}\n`;
-                item.subtotal += parseFloat(topping.price); // Asegúrate de que price es un número
-            });
-        }
-        if (item.sauce.length > 0) {
-            message += "   Salsas:\n";
-            item.sauce.forEach(sauce => {
-                message += `   - ${sauce.name}\n`; // Suponiendo que las salsas son gratis o ya están incluidas en el precio
-            });
-        }
-        if (item.notes) {
-            message += `   Notas: ${item.notes}\n`;
-        }
-        message += `   Subtotal: S/.${item.subtotal.toFixed(2)}\n\n`; // Asegura dos decimales en el subtotal
-        totalOrder += item.subtotal; // Suma al total del pedido
+      message += `${item.quantity}x ${item.name} - S/.${item.price}\n`;
+      if (item.combo.length > 0) {
+        message += "   Combo incluye:\n";
+        item.combo.forEach(comboItem => {
+          message += `   - ${comboItem.name}\n`; // Asumimos que los combos no modifican el precio
+        });
+      }
+      if (item.toppings.length > 0) {
+        message += "   Adicionales:\n";
+        item.toppings.forEach(topping => {
+          message += `   - ${topping.name}: S/.${topping.price}\n`;
+          item.subtotal += parseFloat(topping.price); // Asegúrate de que price es un número
+        });
+      }
+      if (item.sauce.length > 0) {
+        message += "   Salsas:\n";
+        item.sauce.forEach(sauce => {
+          message += `   - ${sauce.name}\n`; // Suponiendo que las salsas son gratis o ya están incluidas en el precio
+        });
+      }
+      if (item.notes) {
+        message += `   Notas: ${item.notes}\n`;
+      }
+      message += `   Subtotal: S/.${item.subtotal.toFixed(2)}\n\n`; // Asegura dos decimales en el subtotal
+      totalOrder += item.subtotal; // Suma al total del pedido
     });
 
     message += `Total del pedido: S/.${totalOrder.toFixed(2)}`; // Total del pedido con dos decimales
     return message;
-}
+  }
 
-  async ADDRESS(ctx: Ctx, messageEntry: IParsedMessage) {}
+  async ADDRESS(ctx: Ctx, messageEntry: IParsedMessage) { }
 
-  async PAYMENT(ctx: Ctx, messageEntry: IParsedMessage) {}
+  async PAYMENT(ctx: Ctx, messageEntry: IParsedMessage) { }
 
   async getWhatsappMediaUrl({ imageId }: { imageId: string }) {
     const getImage = await axios
