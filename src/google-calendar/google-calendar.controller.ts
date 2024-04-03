@@ -14,8 +14,7 @@ export class GoogleCalendarController {
 
   @Get('find-available-slots')
   async findAvailableSlots(): Promise<any> {
-    const today = new Date();
-    const date = '28/02/2024'
+    const date = '29/03/2024 15:00:00'
     return this.googleCalendarService.findAvailableSlots('abel3121@gmail.com', date);
     }
 }

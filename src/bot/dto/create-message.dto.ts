@@ -19,11 +19,11 @@ export class CreateCtxDto {
     
     @IsDate()
     @IsOptional()
-    date: Date;
+    date?: Date;
     
-    @IsNumber()
+    @IsString()
     @IsOptional()
-    step: number;
+    step?: string;
     
     @IsString()
     @IsOptional()

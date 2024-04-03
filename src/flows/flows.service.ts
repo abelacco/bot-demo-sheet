@@ -26,165 +26,22 @@ export class FlowsService {
     private readonly googleCalendarService: GoogleCalendarService,
   ) { }
 
-  PROMPT_DETERMINATE_DATE = `
-  Como ingeniero de inteligencia artificial, tu rol principal es analizar las solicitudes de los clientes que buscan programar una cita. Las citas están disponibles de lunes a viernes, de 9 a.m. a 5 p.m. Debes examinar las solicitudes para determinar la preferencia del cliente en cuanto a la fecha y hora, ajustándolas según las expresiones dadas y nuestro horario de atención.
 
-  Fecha de hoy: {CURRENT_DAY}
-
-  Guía de Proceso:
-  1. Identifica la fecha y hora que el usuario solicita para su cita con base en su mensaje.
-  2. Ajusta las fechas de acuerdo a las expresiones de tiempo indicadas por el usuario. Por ejemplo, si el usuario solicita "la próxima semana", selecciona el primer día hábil del horario laboral. Si la solicitud es para "el próximo mes", determina y asigna el primer día hábil del próximo mes. Asegúrate que estos ajustes estén en línea con el horario de atención.
-     Ejemplo: Si hoy es 20 de marzo de 2024, "la próxima semana" se referiría a la semana del 25 de marzo, y "el próximo mes" se referiría a abril. La fecha debe ser "25/03/2024" y "01/04/2024" respectivamente.
-  3. Interpreta expresiones como "por la mañana" o "por la tarde" en "AM" o "PM" respectivamente, teniendo en cuenta que el horario de atención es de 9 AM a 5 PM.
-  4. Construye una respuesta en formato JSON con las propiedades "date", "hour", y "default":
-     - "date" debe contener la fecha determinada en el formato "dd/mm/yyyy". Si la fecha no puede ser establecida, utilízase "NF".
-     - "hour" se ajusta según se haya determinado "AM" o "PM". Si no se puede definir una hora, utilízase "NF".
-     - El campo "default" se usa solo si tanto "date" como "hour" resultan en "NF", solicitando al usuario que proporcione información más detallada.
-  
-  Formato de Respuesta Esperado:
-  {
-        "date": "dd/mm/yyyy" o "NF",
-        "hour": "AM" o "PM" o "NF",
-        "default": "" o "No hemos podido determinar una fecha y hora específicas para su cita. Por favor, suministre un día y un horario que estén dentro del rango de nuestro horario de atención, que es de lunes a viernes, de 9 AM a 5 PM."
-    }
-  
-  Recuerda ofrecer respuestas claras y concisas cuando sea factible. Si la consulta del usuario es confusa o no viable, utiliza el campo "default" para solicitar información adicional, siempre pidiéndolo cortésmente y respetando nuestro horario de atención.  `;
-
-  generateDeterminateDatePrompt = () => {
-    const nowDate = Utilities.todayHour()
-    const mainPrompt = this.PROMPT_DETERMINATE_DATE
-      .replace('{CURRENT_DAY}', nowDate)
-    return mainPrompt
-  }
-
-  PROMPT_SCHEDULE = `
-  Como ingeniero de inteligencia artificial especializado en la programación de reuniones, tu objetivo es analizar la conversación y determinar la intención del cliente de programar una reunión, así como su preferencia de fecha y hora. La reunión durará aproximadamente 45 minutos y solo puede ser programada entre las 9am y las 4pm, de lunes a viernes, y solo para la semana en curso.
-
-  Fecha de hoy: {CURRENT_DAY}
-
-  Reuniones ya agendadas:
-  -----------------------------------
-  {AGENDA_ACTUAL}
-
-  Historial de Conversacion:
-  -----------------------------------
-  {HISTORIAL_CONVERSACION}
-
-  Ejemplos de respuestas adecuadas para sugerir horarios y verificar disponibilidad:
-  ----------------------------------
-  "Por supuesto, tengo un espacio disponible mañana, ¿a qué hora te resulta más conveniente?"
-  "Sí, tengo un espacio disponible hoy, ¿a qué hora te resulta más conveniente?"
-  "Lo siento, el miércoles a las 4 pm ya está reservado, pero tengo turnos disponibles a las 9 am, 10 am y 11 am. ¿Cuál prefieres?"
-  "Ciertamente, tengo varios huecos libres esta semana. Por favor, indícame el día y la hora que prefieres."
-  "Los turnos disponibles mas pronto son el martes a las 9 am, 10 am y 11 am. ¿Cuál prefieres?"
-
-  INSTRUCCIONES:
-  ----------------------------------
-  - No inicies con un saludo.
-  -Si el cliente pregunta disponibilidad sin especificar fecha ni hora:
-    Responde preguntando si tiene alguna fecha y hora en especial en mente.
-    Ejemplo de respuesta: "¿Tienes alguna fecha y hora específica en mente para nuestra reunión?"
-  -Si el cliente pregunta disponibilidad solo indicando la hora:
-    Verifica primero si hay disponibilidad para esa hora el día de hoy. Considera si la hora ya ha pasado.
-  -Si no hay disponibilidad hoy o la hora ya ha pasado, indica los turnos más próximos disponibles.
-    Ejemplo de respuesta: "Para hoy ya no tenemos disponibilidad a esa hora, pero los próximos espacios disponibles son [listar tres próximas horas disponibles]. ¿Te conviene alguno de estos horarios?"
-  -Si el cliente pregunta disponibilidad solo indicando la fecha:
-    Busca en esa fecha las 3 horas disponibles más próximas y pregunta si desea alguna de esas o si prefiere otra hora.
-    Ejemplo de respuesta: "Para el [fecha], tengo los siguientes horarios disponibles: [hora 1], [hora 2], [hora 3]. ¿Te gustaría reservar alguno de estos, o prefieres otra hora?"
-  -Si el cliente pregunta disponibilidad con fecha y hora:
-    Verifica si hay disponibilidad para esa fecha y hora.
-    Si está disponible, pide al cliente que confirme.
-    Si no está disponible, indica las fechas disponibles más próximas.
-    Ejemplo de respuesta: "Para el [fecha] a las [hora], tenemos disponibilidad. ¿Te gustaría confirmar este horario para nuestra reunión? 📅⏰"
-  - Si no hay disponibilidad: "Lo siento, pero no tenemos disponibilidad para esa hora. Los próximos espacios disponibles son [listar tres próximos horarios disponibles]. ¿Te gustaría reservar alguno de estos? 📅⏰"  - Las reuniones solo pueden ser programadas entre las 9am y las 4pm, de lunes a viernes.
-  - Cada reunion dura 45 minutos.
-  - Cada reunion empieza en punto. Es decir 9:00 , 10:00 , 11:00 , 12:00 , 13:00 , 14:00 , 15:00 , 16:00
-  - Las respuestas deben ser cortas y adecuadas para WhatsApp, utilizando emojis para mayor claridad y amabilidad.
-  - Utiliza la información del historial de conversción y la agenda para calcular las respuestas.
-`
-
-  generateSchedulePrompt = (summary: string, history: string) => {
-    const nowDate = Utilities.todayHour()
-    const mainPrompt = this.PROMPT_SCHEDULE
-      .replace('{AGENDA_ACTUAL}', summary)
-      .replace('{HISTORIAL_CONVERSACION}', history)
-      .replace('{CURRENT_DAY}', nowDate)
-    console.log('mainPrompt', mainPrompt)
-    return mainPrompt
-  }
-  async AGENDAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
-    try {
-      const messageOne = 'dame un momento para consultar la agenda...';
-      const saveMessageOne = await this.historyService.setAndCreateAssitantMessage(
-        { ...messageEntry },
-        messageOne,
-      );
-      await this.senderService.sendMessages(
-        this.builderTemplate.buildTextMessage(
-          messageEntry.clientPhone,
-          messageOne,
-        ),
-      );
-      const promptSchedule = this.generateDeterminateDatePrompt();
-      const messageTwo = await this.aiService.createChat([
-        {
-          role: 'system',
-          content: promptSchedule,
+  async getWhatsappMediaUrl({ imageId }: { imageId: string }) {
+    const getImage = await axios
+      .get(`https://graph.facebook.com/v19.0/${imageId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.CURRENT_ACCESS_TOKEN}`,
         },
-        {
-          role: 'user',
-          content: `Cliente pregunta: ${messageEntry.content}`,
-        }
-      ]);
-      console.log('messageTwo', messageTwo)
-      const chunks = messageTwo.split(/(?<!\d)\.\s+/g);
-      for (const chunk of chunks) {
-        const newMessage =
-          await this.historyService.setAndCreateAssitantMessage(
-            messageEntry,
-            chunk,
-          );
-        await this.senderService.sendMessages(
-          this.builderTemplate.buildTextMessage(
-            messageEntry.clientPhone,
-            chunk,
-          ),
-        );
-      }
-      // const listAppoinments = await this.googleSpreadsheetService.getListAppointments();
-      // const parsedListAppointments = Utilities.parseListAppointments(listAppoinments);
-      // const promptSchedule = this.generateSchedulePrompt(parsedListAppointments, historyParsed);
-      // const messageTwo = await this.aiService.createChat([
-      //   {
-      //     role: 'system',
-      //     content: promptSchedule,
-      //   },
-      //   {
-      //     role: 'user',
-      //     content: `Cliente pregunta: ${messageEntry.content}`,
-      //   }
-      // ]);
-      // const chunks = messageTwo.split(/(?<!\d)\.\s+/g);
-      // for (const chunk of chunks) {
-      //   const newMessage =
-      //     await this.historyService.setAndCreateAssitantMessage(
-      //       messageEntry,
-      //       chunk,
-      //     );
-      //   await this.senderService.sendMessages(
-      //     this.builderTemplate.buildTextMessage(
-      //       messageEntry.clientPhone,
-      //       chunk,
-      //     ),
-      //   );
-      // }
-    } catch (err) {
-      console.log(`[ERROR]:`, err);
-      return;
-    }
+      })
+      .then((res) => res.data)
+      .catch((error) => console.error(error));
+
+    return getImage.url;
   }
 
-  async HABLAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed?: string) {
+  sendInfoFlow = async (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) => {
     try {
       const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
       const question = messageEntry.content;
@@ -209,307 +66,864 @@ export class FlowsService {
       console.log(`[ERROR]:`, err);
       return;
     }
+
   }
 
-  // FECHA DE HOY: {CURRENT_DAY}
-  // INIT: {INIT}
+  PROMPT_ANALYZE_DATA = 
+  `Como una inteligencia artificial avanzada, tu tarea es analizar [HISTORIAL_CONVERSACION] y seleccionar la acción más adecuada a seguir.
+  --------------------------------------------------------
+  [HISTORIAL_CONVERSACION]:
+  {HISTORY}
 
-  // SOBRE "Tao Restobar":
-  // Nos distinguimos por ofrecer una amplia variedad de platos internacionales, asegurando una experiencia culinaria única. Nuestro horario de atención es de lunes a domingo, desde las 12:00 hasta las 23:00. Para más información, visita nuestro sitio web en "saboresdelmundo.com". Aceptamos pagos en efectivo, tarjetas de crédito y a través de aplicaciones de pago móvil. Te recomendamos hacer una reserva para evitar tiempos de espera.
+  [QUESTION]:
+  {CLIENT_ANSWER}
+  
+  Posibles acciones a realizar:
+  1. INFO: Esta acción se debe realizar cuando el cliente pregunta a cerca:
+    - Información general sobre los servicios que ofrecemos.
+    - Precios.
+    - Servicios que ofrecemos.
+    - o esta iniciando la conversación con un saludo genérico.
+  2. AGENDAR: Esta acción se debe realizar cuando el cliente esta solicitando:
+    - Información sobre la disponibilidad para agendar una cita.
+    - Horarios disponibles.
+    - Fechas disponibles.
+    - Horarios de atención.
+    - Intenta agendar una cita.
+  Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  
+  Respuesta ideal (INFO|AGENDAR):`;
 
-  // MENÚ DESTACADO:
-  // ESPECIALES FRIOS
-  // OMAKASE TAO339.00
-  // 16 cortes de sashimis mixtos, 1/2 tabla de maki especial. 2 porc. de nigiris especiales, ceviche caliente y hosomaki.
+  generateAnalyzePrompt = (question:string,history: string) => {
+    return this.PROMPT_ANALYZE_DATA.replace('{HISTORY}', history).replace('{CLIENT_ANSWER}', question);
+  }
 
-  // TABLA PARA 4399.00
-  // 16 cortes de sashimis mixtos, 3 porc. de nigiris especiales,1/2 tabla de maki especial, 6 intigyozas, 3 bolicausas, tempura mixta y 4 baos.
-
-  // BARCO FUSION570.00
-  // 36 cortes de sashimi mixto, 8 und de gunkan, 48 rolls, 8 und de nigiri, 2 und de hossomaki y 1 porción de tempura mixta.
-
-  // SASHIMI & NIGIRI
-  // SASHIMI MORIAWASE140.00
-  // 16 CORTES La mejor elección del itamae, te sorprenderas
-
-  // SASHIMI (3 cortes) MERO46.00 SALMÓN45.00 CONCHAS DE ABANICO36.00 ATÚN39.00 PULPO35.00
-  // NIGIRIS CLÁSICOS (2 piezas) MERO24.00 SALMÓN24.00 CONCHAS DE ABANICO22.00 ATÚN22.00 PULPO25.00
-
-  // GUNKAN & POKES
-  // SALMÓN POKE58.00
-  // Shari, cubos de salmón marinados en salsa spicy, ensalada ponja, cubos de palta, choclito dulce y nori crocante.
-
-  // POKE AHUMADO48.00
-  // Shari, tartare de atún tataki, ensalada de kiuri, palta, queso crema crocante, bañados en mayo shoyu y sriracha.
-
-  // TNT GUNKAN SUSHI (2 piezas)
-  // Bollos de arroz envueltos en bandos de nori, acompañados de shoyu, Gari y wasabi.
-
-  //  SALMON30.00 HOTATE25.00 PULPO24.00 ATUN24.00
-
-  // CEVICHES & CAUSAS
-  // CAUSA CON TARTARE NIKKEI ATÚN51.00 MIXTO (Atún, Salmón)56.00
-  // CEVICHE MIXTO O CLASICO64.00 MERO86.00
-  // Clásica elaboración a base de pescado blanco, mixtura de mariscos, zumo de limón, cebolla, culantro, cancha, camote glaseado.
-
-  // CEVICHE CARRETILLERO69.00
-  // Con calle pero elegante, cubos de pescado blanco, rocoto con jugo de limon, chicharron de calamar.
-
-  // CEVICAUSA52.00
-  // Tradicional causa peruana, relleno con tartar de langostino y palta, sobre un clásico ceviche bien norteño.
-
-  // CAUSA CARRETILLERA58.00
-  // Con calle, pero elegante, rellena con langostino y palta, con chicharrón de calamar, acevichada de rocoto.
-
-  // TIRADITOS TAO
-  // TIRADITO TAKO PARRILLERO nuevo52.00
-  // Pulpo grillado en una base de salsa de oliva ahumada, acompañado de tomate Cherry confitado, sufflé de arroz y coronado con chalaquita de rocoto.
-
-  // TIRADITO CARRETILLERO54.00
-  // Láminas de pescado blanco y leche de tigre amarillo ,chicharron de calamar , tartara asiatica y cubos de palta.
-
-  // TIRADITO AHUMADO50.00
-  // Láminas de pescado.blanco , bañados en leche de tigre ahumada de rocoto , pulpo al grill y chalaquita de zarandaja crocante.
-
-  // TIRADITO FASSION65.00
-  // Conchas de abanico XL selladas, Sobre espejo de leche de tigre de ají amarillo, coronado de palta, tobico negro, hojas de culantro, ají limo, cebolla roja, y gotas de aceite trufado.
-
-  // TIRADITO TROPICAL65.00
-  // Conchas de abanico XL selladas, en sopita de leche de tigre de coco, Coronado con palta, tobico negro, ovas de Salmón, hojas de culantro, aji limo, durazno ahumado, y aceite trufado.
-
-  // NORITACOS TAO
-  // (4 und.)
-  // Galleta crocante de nori, rellena con una explosión de sabores.
-
-  //  PULPO AL OLIVO60.00 ATÚN PICANTE56.00 SALMÓN AL SESAMO75.00 CONCHA ACV65.00 MEDIA PORCIÓN38.00
-
-  // MAKIS TAO
-  // SAMURAI ROLL40.00 MEDIO MAKI22.00
-  // Relleno de ebi furai y palta. Coronado con un saltado de mariscos al curry y salsa tare.
-
-  // MAKI DRAGÓN60.00 MEDIO MAKI35.00
-  // Relleno de tartar de atún y ebi furai. Coronado en láminas de palta, acompañado de salsa de ají amarillo ahumado.
-
-  // CARAQUEÑO40.00 MEDIO MAKI22.00
-  // Relleno de plátano maduro, ebi furai y palta, coronado con una salsa de quesos gratinados y salsa tare.
-
-  // OISHI ROLL60.00 MEDIO MAKI32.00
-  // Langostino empanizado y palta por dentro, coronado con tartar de salmón, flameado con una emulsión de salsa de ajos picante.
-
-  // NEW TAO45.00 MEDIO MAKI24.50
-  // Relleno de pulpa de cangrejo, queso, palta y ebi furai, cubierta con pescado blanco ahumado bañado en salsa thai.
-
-  // FUJI ROLL nuevo46.00 MEDIO MAKI25.00
-  // Delicioso uramaki relleno de Ebi furai y queso crema con un toping de langostino crocante bañado en salsa fuji y tare.
-
-  // HOTATE42.00 MEDIO MAKI23.00
-  // Relleno de langostino , crocante y palta, fuera conchas de abanico flambeado con crema de ajo picante.
-
-  // TAKO ACV45.00 MEDIO MAKI24.50
-  // Relleno de langostino crocante y palta, cubierto con tartare de pulpo con salsa acevichada y olivo.
-
-  // SMOKED AVOCADO48.00 MEDIO MAKI26.00
-  // Relleno de pulpa de cangrejo, langostinos furai, cubierto con finas láminas de palta ahumadas bañadas en salsa de anguila.
-
-  // TAO PIZZERO42.00 MEDIO MAKI23.00
-  // Langostino crocante, cubierto de quesos gratinado, palta, bañado con salsa tare.
-
-  // GAUCHO42.00 MEDIO MAKI23.00
-  // Lomo furai, queso crema, cubierto con lomo flambeado y chimichurri.
-
-  // PARRILLERO ROLL nuevo42.00 MEDIO MAKI23.00
-  // Uramaki relleno de lomo furai, palta y pimiento ahumado, topeado con finas laminas de lomo y sopleteado con nuestra salsa parrillera.
-
-  // SPICY44.00 MEDIO MAKI24.00
-  // Relleno de atún fresco y palta, envueltos en nori, bañada en nuestra salsa picante.
-
-  // TUNA ROCK44.00 MEDIO MAKI24.00
-  // Relleno de langostino y palta, por fuera tartare de atún spicy con ponzu ahumada.
-
-  // MAKIS CLÁSICOS
-  // CALIFORNIA45.00 MEDIO MAKI24.50
-  // Relleno de salmón fresco, queso crema, palta por fuera ajonjolí tostado.
-
-  // ACEVICHADO42.00 MEDIO MAKI23.00
-  // Langostinos crocantes, palta, cubierto con finos cortes de atún, bañados en nuestra deliciosa salsa acevichado y con topin de Furikake criollo.
-
-  // EXTRAVAGANZA42.00 MEDIO MAKI23.00
-  // Queso crema, ebi furai, cubierto en salmón flambeado con salsa batayaki y bañado con salsa tare.
-
-  // TARTAR ROLL nuevo44.00 MEDIO MAKI24.00
-  // Delicioso maki crocante relleno con Ebi furai y palta con toping de tartar golf coronado con hilos crocantes.
-
-  // BABY42.00 MEDIO MAKI23.00
-  // Relleno de Eby Furai y palta, cubierto de finas láminas de pescado blanco, bañado con salsa spicy garlic, flambeada y salsa tare.
-
-  // CERVEZAS
-  // HEINEKEN14.00
-
-  // JUGOS
-  // Limonada vaso12.00 Jarra de 1lt25.00
-  // Fruta vaso15.00 Jarra de 1lt28.00
-  // Especial Tao vaso18.00 Jarra de 1lt28.00
-  // Frozzen vaso18.00 Jarra de 1lt30.00
-  // Por favor complete la siguiente encuesta
-
-  // HISTORIAL DE CONVERSACIÓN:
-  // --------------
-  // {HISTORIAL_CONVERSACION}
-  // --------------
-
-  // DIRECTRICES DE INTERACCIÓN:
-  // 1. Proporciona información detallada y precisa sobre los platos cuando se solicite , no inventar nada solo responder según  la información que te proporcionamos.
-  // 2. Anima a los clientes a realizar pedidos directamente a través de este chat.
-  // 3. Confirma los detalles del pedido para asegurar la satisfacción del cliente antes de finalizar.
-  // 4. Si INIT es 1, considera que ya hemos saludado al cliente anteriormente y procede directamente con la consulta o servicio.
-
-  // EJEMPLOS DE RESPUESTAS:
-  // "¡Claro! ¿Te gustaría ordenar algo de nuestro menú destacado o necesitas recomendaciones?"
-  // "Estoy aquí para ayudarte a realizar tu pedido, ¿qué te gustaría probar hoy?"
-  // "¿Puedo interesarte en alguno de nuestros platos especiales del día o prefieres algo más tradicional?"
-
-  // INSTRUCCIONES:
-  // - Respuestas cortas ideales para enviar por WhatsApp con emojis.
-  // - No inventar platos ni ingredientes.
-  // - Si INIT es 1, omite el saludo inicial para evitar repetición y procede directamente con la asistencia.
-
-  // Respuesta útil:`;
-  PROMPT_SELLER = `	
-    Bienvenido a "LaBurger Lima", tu destino para auténticas hamburguesas al carbón en el distrito de Surquillo. Nos encontramos en el corazón de Lima, en Av. Principal 501, Surquillo. Soy tu Asistente Virtual, listo para ayudarte en lo que necesites. 
-    
-    FECHA DE HOY: {CURRENT_DAY}
-    INIT: {INIT}
-
-    SOBRE "LaBurger Lima":
-    En LaBurger Lima, nos enorgullecemos de ofrecer hamburguesas hechas a la perfección al carbón, utilizando sólo carne de res 100% natural para proporcionarte una experiencia culinaria excepcional. Estamos abiertos todos los días desde las 7:00 PM hasta las 11:00 PM. Si necesitas más información o deseas realizar un pedido, no dudes en llamarnos al 934504415 durante nuestro horario de atención o visitarnos en nuestra dirección en Av. Principal 501, Surquillo, Lima. Aceptamos efectivo , todo las tarjetas , yape o plin.
-    
-    MENÚ COMPLETO:
-
-    HAMBURGUESAS:
-    - Burger Doble (2 carnes de 130 gr): S/.17.9
-    - Burger Royal (con huevo frito): S/.14.9
-    - Burger a lo pobre (con plátano frito): S/.16.9
-    - Burger Hawaiana (con Piña, queso y jamón): S/.16.9
-    - Burger Bacon (con Tocino ahumado): S/.15.9
-    - Burger Caramel / Cheddar (con cebollas caramelizadas y queso Cheddar): S/.15.9
-    - Burger Argentina (con chorizo parrillero): S/.17.9
-    - Burger Clásica (con papas al hilo, lechuga y tomate): S/.13.9
-    - Burger Cheese (con Queso Edam o Cheddar): S/.14.9
-    - Burger Deluxe (con 4 toppings a elección, no incluye chorizo/carne extra): S/.18.9
-    
-    ADICIONALES O TOPPINGS (Solo para hamburguesas y otros):
-    - Jamón: S/.2
-    - Filete de pollo Extra: S/.6
-    - Tocino: S/.3
-    - Queso Edam: S/.2
-    - Queso Cheddar: S/.2
-    - Plátano frito: S/.2
-    - Piña: S/.2
-    - Huevo: S/.2
-    - Carne extra: S/.5
-    - Chorizo: S/.5
-    - Cebolla Caramelizada: S/.2
-    
-    BEBIDAS:
-    - Agua San Carlos (500ml): S/.2
-    - Sprite (500ml): S/.5
-    - Shandy (Cerveza Lager y bebida gasificada): S/.7
-    - Coca Cola Zero (300ml): S/.4
-    - Inca Kola (500ml): S/.5
-    - Pepsi (355ml): S/.2.5
-    - 7 Up (355ml): S/.1
-    - Fanta (500ml): S/.5
-    - Inca Kola Zero (300ml): S/.4
-    - Guarana (330ml): S/.2.5
-    - Concordia Piña (355ml): S/.2.5
-    
-    OTROS:
-    - Salchipapa Deluxe (con 3 toppings a elección): S/.18.9
-    - Filete de Pollo a la parrilla: S/.14.9
-    - Papas fritas Crocantes (150 gr): S/.6
-    - Camote frito: S/.6
-    - Salchipapa con Queso y Tocino: S/.17.9
-    - Salchipapa Frankfuter: S/.14.9
-    - Choripan con Chimichurri: S/.10.9
-    - Salchipapa con Queso Cheddar: S/.15.9
-    - Combo papas fritas + Gaseosa PepsiCo: S/.6
-    - Combo camote frito + Gaseosa PepsiCo: S/.6
-    
-    CREMAS DISPONIBLES:
-    - Ketchup
-    - Mayonesa
-    - Mostaza
-    - Ají
-    - Aceituna
-    - Rocoto
-
-    HISTORIAL DE CONVERSACIÓN:
-    --------------
-    {HISTORIAL_CONVERSACION}
-    --------------
-    
-    DIRECTRICES DE INTERACCIÓN:
-    1. Proporciona información detallada y precisa sobre nuestros platos cuando se solicite.
-    2. Anima a los clientes a realizar sus pedidos directamente a través de este chat.
-    3. Confirma los detalles del pedido con el cliente para asegurar su total satisfacción.
-    4. Si INIT es 1, omite el saludo inicial para evitar repeticiones y procede directamente con la consulta o servicio requerido.
-    5. Cuando saludes siempre di el nombre del restaurante y además dejas indicando que le dejas un link de la carta.
-
-    EJEMPLOS DE RESPUESTAS:
-    "Bienvenido a LaBurger Lima, ¿te gustaría ordenar alguna de nuestras hamburguesas destacadas o necesitas alguna recomendación?"
-    "¡Por supuesto! ¿Te gustaría ordenar alguna de nuestras hamburguesas destacadas o necesitas alguna recomendación?"
-    "Estoy aquí para ayudarte con tu pedido, ¿qué te gustaría probar hoy?"
-    " Para terminar con tu orden necesito tu nombre y dirección de entrega por favor"
-    "¿Te interesa probar nuestra Hamburguesa Especial de la Casa o prefieres algo más tradicional como nuestra Hamburguesa Clásica?"
-    
-    INSTRUCCIONES:
-    - Utiliza respuestas cortas y claras, ideales para enviar por WhatsApp.
-    - En lo posible agregar emojis al mensaje.
-    - Mantén las respuestas basadas en el menú y la información proporcionada.
-    - Si INIT es 1, evita el saludo inicial para no ser repetitivo y ofrece directamente la asistencia.
-    `;
-
-  generatePromptSeller = (history: string) => {
-    let init = '0';
-    if (history.includes('Vendedor')) {
-      init = '1';
-    }
-    const nowDate = getFullCurrentDate();
-    return this.PROMPT_SELLER.replace('{HISTORIAL_CONVERSACION}', history)
-      .replace('{CURRENT_DAY}', nowDate)
-      .replace('{INIT}', init);
-  };
-
-  async INFO(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+  async analyzeDataFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
     try {
-      const prompt = this.generatePromptSeller(historyParsed);
-      console.log('PROMPT:', prompt);
-      const text = await this.aiService.createChat([
+      const prompt = this.generateAnalyzePrompt(messageEntry.content,historyParsed);
+      console.log('ANAL', prompt);
+      const response = await this.aiService.createChat([
         {
           role: 'system',
           content: prompt,
         },
       ]);
-
-      const chunks = text.split(/(?<!\d)\.\s+/g);
-      for (const chunk of chunks) {
-        const newMessage =
-          await this.historyService.setAndCreateAssitantMessage(
-            messageEntry,
-            chunk,
-          );
-        await this.senderService.sendMessages(
-          this.builderTemplate.buildTextMessage(
-            messageEntry.clientPhone,
-            chunk,
-          ),
-        );
+      if(response === 'INFO') {
+        await this.sendInfoFlow(ctx, messageEntry, historyParsed);
+        // ctx.step = '1';
+      } else {
+        console.log('AGENDAR');
+        await this.availabilityFlow(ctx, messageEntry, historyParsed);
+        // ctx.step = '2';
+        // await this.ctxService.updateCtx(ctx._id, ctx);
       }
     } catch (err) {
       console.log(`[ERROR]:`, err);
       return;
     }
   }
+
+  PROMPT_FILTER_DATE = `
+  ### Contexto
+  Eres un experto determinando fechas. Tu propósito es determinar la fecha que el cliente quiere, en el formato dd/mm/yyyy.
+  
+  ### Fecha y Hora Actual:
+  {CURRENT_DAY}
+  
+  ### Historial de Conversación:
+  {HISTORY}
+
+  ### Expresión de tiempo a analizar:
+  {TIME_EXPRESSION}
+
+  Instrucciones detalladas:
+- Uso como contexto el historial de conversación y la expresión de tiempo proporcionada.
+- Utiliza la fecha y hora actuales como punto de partida para tus cálculos.
+- Si la expresión de tiempo no proporciona suficiente información para una fecha específica, usa la fecha {CURRENT_DAY}.
+- Asume un calendario estándar gregoriano sin tener en cuenta posibles eventos o festividades.
+- La respuesta siempre debe ser una fecha con el formato dd/mmmm/yyyy.
+- Nunca responder con un string que no sea una fecha.
+
+  Ejemplo de expresiones a interpretar (estos ejemplos son hipotéticos y sirven como guía para tus cálculos y expresiones de tiempo similiares):
+    Suponiendo que para este ejemplo la fecha actual es 02/04/2024:
+    1. Para mañana = 03/04/2024
+    2. Este viernes = 05/04/2024
+    3. Para la otra semana = 08/04/2024 - Asume el inicio de la semana el lunes
+    4. Lo más pronto posible = 02/04/2024 - Fecha actual
+    5. Para fin de mes = 30/04/2024
+    6. Para pasado mañana = 04/04/2024
+    7. Dentro de una semana = 09/04/2024
+    8. Para el próximo mes = 01/05/2024
+    9. En tres días laborables = 05/04/2024 - Asume días laborables de lunes a viernes
+    10. Fin de semana próximo = 06/04/2024 - Asume el sábado como inicio del fin de semana
+    11. Para fin de año = 31/12/2024
+    12. En un mes a partir de ahora = 02/05/2024
+
+    Respuesta ideal: {date: "dd/mm/yyyy"}
+  `;
+  generatePromptFilter  = (history: string, timeEpression: string) => {
+  const nowDate = Utilities.todayHour()
+  const mainPrompt = this.PROMPT_FILTER_DATE
+      .replace('{HISTORY}', history)
+      .replace('{CURRENT_DAY}', nowDate)
+      .replace('{TIME_EXPRESSION}', timeEpression);
+
+  return mainPrompt;
+  }
+
+  async availabilityFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed) {
+    try {
+        // Suponiendo que generatePromptFilter, aiService.desiredDateFn y Utilities están definidos anteriormente
+        const promptGetDateAndHour = this.generatePromptFilter(historyParsed,messageEntry.content);
+        const posibleDate = await this.aiService.desiredDateFn([
+            {
+                role: 'system',
+                content: promptGetDateAndHour,
+            },
+        ]);
+
+        let fullDate = posibleDate?.date ? posibleDate.date : '';
+        console.log('fullDate:', fullDate);
+        if (!fullDate) {
+          fullDate = Utilities.today();
+        }
+
+        let queryDateTime = fullDate
+        let availableSlots = { day: '', hours: [] };
+
+        do {
+          // Verificar si el día está dentro del horario de atención
+          if (Utilities.isWithinBusinessHours(queryDateTime)) {
+            // Buscar slots disponibles para el día
+            availableSlots = await this.googleCalendarService.findAvailableSlots('abel3121@gmail.com', queryDateTime);
+            if (availableSlots.hours.length === 0) {
+              queryDateTime = Utilities.addBusinessDays(queryDateTime, 1);
+              console.log('No hay slots disponibles para el día', queryDateTime);
+            }
+          } else {
+            queryDateTime = Utilities.addBusinessDays(queryDateTime, 1);
+            console.log('No es un día hábil, buscando siguiente día', queryDateTime);
+          }
+        } while (availableSlots.hours.length === 0); // Continuar hasta encontrar un día con al menos un slot disponible
+        // Procesar y mostrar los slots disponibles
+        let slotsParsed = Utilities.convertSchedule(availableSlots)
+        let btnText = 'Ver horarios';
+        let sections = Utilities.generateOneSectionTemplate('Fechas disponibles:',slotsParsed)
+        let bodyMessage = 'Por favor, selecciona una fecha y hora para agendar tu cita, si deseas otra fecha y hora por favor escribela.';
+        // let combineTextList = Utilities.generateOneSectionTemplate(bodyMessage,sections);
+        //     await this.historyService.setAndCreateAssitantMessage(
+        //       messageEntry,
+        //       combineTextList,
+        //     )
+        const newMessage = this.builderTemplate.buildInteractiveListMessage(messageEntry.clientPhone, btnText, sections , 'Lista',bodyMessage);
+        await this.senderService.sendMessages(newMessage);
+        ctx.step = '3';
+        await this.ctxService.updateCtx(ctx._id, ctx);
+    } catch (err) {
+        console.error(`[ERROR]:`, err);
+    }
+  }
+
+  async preconfirmFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+      let dateSelected = messageEntry.content;
+      ctx.dateSelected = dateSelected;
+      let messageOne = 'Ahora para finalizar la reserva, por favor ingresa tu nombre, nombre de la empresa, rubro y correo electrónico.\n*Ingresa todos los datos en un solo mensaje.*\nEjemplo: "Alejandro , Chaskipizza , restaurantes , alejandro@gmail.com';
+      await this.senderService.sendMessages(
+        this.builderTemplate.buildTextMessage(
+          messageEntry.clientPhone,
+          messageOne,
+        ),
+      );
+      ctx.step = '4';
+      await this.ctxService.updateCtx(ctx._id, ctx);
+    }
+    catch (err) {
+      console.error(err);
+      return;
+    }
+  }
+
+  PROMPT_CONFIRM = `Eres un asistente especializado en determinar si un cliente cumple con todos los requisitos para agendar una reunion. Tu objetivo es analizar la conversación y detectar si el cliente ha mencionado:
+  
+  ### Datos obligatorios para agendar una reunión:
+  - Nombre del cliente
+  - Nombre de la empresa 
+  - Rubro de la empresa
+  - Correo electrónico del cliente
+
+  ### Registro de Conversación:
+  {HISTORY}
+
+  ### Respuesta del cliente:
+  {CLIENT_ANSWER}
+
+  ### Acciones a realizar:
+  Extraer los datos obligatorios para agendar una reunión.
+  Si el cliente no ha proporcionado el rubro de la empresa y puedes deducirlo, puedes sugerirlo.
+  En caso la respuesta del cliente no hace referencia a los datos solicitados, entonces debes poner en true la variable outOfContext.
+  `;
+
+  generatePromptConfirm = (question:string,history: string) => {
+    const mainPrompt = this.PROMPT_CONFIRM
+      .replace('{HISTORY}', history)
+      .replace('{CLIENT_ANSWER', question)
+    return mainPrompt
+  }
+
+
+
+  async checkExtaDataFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+      const prompt = this.generatePromptConfirm(messageEntry.content,historyParsed);
+      const response = await this.aiService.checkData([
+        {
+          role: 'system',
+          content: prompt,
+        },
+      ]);
+      if(response.outOfContext) {
+       return await this.analyzeDataFlow(ctx, messageEntry, historyParsed);
+      }
+      const validateJsonAnswer = Utilities.validateBusinessInfo(response);
+      if(validateJsonAnswer === 'OK'){
+        let confirmMessage = `Genial ${response.clientName} vamos a trabajar para ${response.businessName} mejore la atención al cliente. Tu cita es para el ${ctx.dateSelected}, te llegará a tu correo ${response.email} un recordatorio.`
+        await this.senderService.sendMessages(
+          this.builderTemplate.buildTextMessage(
+            messageEntry.clientPhone,
+            confirmMessage,
+          ),
+        );
+        // guardamos lo del json en la base de datos
+        // agendamos la cita
+        // enviamos los mensajes de confirmación
+        // reseteamos el ctx
+        // actualizamos el step a 0
+
+      } else {
+        let missingInfoMessage = validateJsonAnswer
+        await this.senderService.sendMessages(
+          this.builderTemplate.buildTextMessage(
+            messageEntry.clientPhone,
+            missingInfoMessage,
+          ),
+        );
+      }
+    }
+    catch (err) {
+      console.error(err);
+      return;
+    }
+  }
+}
+
+
+//   PROMPT_ANSWER_DATE = `As an artificial intelligence engineer specializing in meeting scheduling, your goal is to analyze the conversation and determine the client's intention to schedule a meeting, as well as their preferred date and time.
+
+//     Current Day: {CURRENT_DAY}
+
+//     Spots available:
+//     -----------------------------------
+//     {AGENDA}
+
+//     Conversation history:
+//     -----------------------------------
+//     {HISTORY}
+
+//     INSTRUCTIONS:
+//     - Do not start with a greeting.
+//     - Always refer the day if it is possible.
+//     - Always response with aviaible hours.
+//     - If there is availability you must tell the user to confirm.
+//     - If not available, always suggest the next available dates.
+//     - Check in detail the conversation history and calculate the day, date and time that does not conflict with another already scheduled.
+//     - Ideal short answers to send by WhatsApp with emojis.-
+
+//     Examples of suitable answers to suggest times and check availability:
+//     ----------------------------------
+//     "Sure, I have a space available tomorrow at 9 am but I have 11 , 12 and 3 pm available".
+//     "Sure, I have a space available tomorrow, what time works best for you?".
+//     "Yes, I have a space available today, what time works best for you?".
+//     "Sure, I have several spaces available this week. Please let me know the day and time you prefer."
+
+//     Helpful first-person response (in Spanish):
+//   `
+
+//  generatePromptAnswerDate = (summary: string, history: string) => {
+//   const nowDate = Utilities.todayHour()
+//   const mainPrompt = this.PROMPT_ANSWER_DATE
+//       .replace('{AGENDA}', summary)
+//       .replace('{HISTORY}', history)
+//       .replace('{CURRENT_DAY}', nowDate)
+
+//   return mainPrompt
+//  }
+
+
+
+//   async CONFIRMAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+//     try {
+//       const parsedAvailableHours = ctx.parsedAvailableHours;
+//       const confirmPrompt = this.generatePromptConfirm(parsedAvailableHours,historyParsed);
+//       console.log('confirmPrompt', confirmPrompt)
+//       const answer = await this.aiService.createChat([
+//         {
+//           role: 'system',
+//           content: confirmPrompt,
+//         }
+//       ]);
+//       const chunks = answer.split(/(?<!\d)\.\s+/g);
+//       for (const chunk of chunks) {
+//         const newMessage =
+//           await this.historyService.setAndCreateAssitantMessage(
+//             messageEntry,
+//             chunk,
+//           );
+//         await this.senderService.sendMessages(
+//           this.builderTemplate.buildTextMessage(
+//             messageEntry.clientPhone,
+//             chunk,
+//           ),
+//         );
+//       }
+//     } catch (error) {
+//       console.error(error);
+//       return;
+//     }
+//   }
+  // PROMPT_FILTER_AVAILABLE =  `Como una inteligencia artificial avanzada, tu tarea es analizar [HISTORIAL_CONVERSACION] y seleccionar la acción más adecuada en respuesta a la [QUESTION].
+  // --------------------------------------------------------
+  // [HISTORIAL_CONVERSACION]:
+  // {HISTORY}
+
+  // [QUESTION]:
+  // {QUESTION}
+  
+  // Posibles acciones a realizar:
+  // 1. INFO: Esta acción es cuando el cliente pregunta por información general sobre los servicios que ofrecemos y nada relacionado a la disponibilidad. Generalmente son preguntas acerca del servicio o precios.
+  // 2. DISPONIBILIDAD: Esta acción se debe realizar cuando el cliente expresa su deseo de programar una cita.
+  // -----------------------------
+
+  // Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  
+  
+  // Respuesta ideal (INFO|DISPONIBILIDAD|CONFIRMAR):`;
+  // generatePromptFilterDate = (history: string , question:string) => {
+  //   return this.PROMPT_FILTER_AVAILABLE.replace('{HISTORY}', history).replace('{QUESTION}', question);
+  // }
+
+  // PROMPT_INIT_FLOW = 
+  // `Como una inteligencia artificial avanzada, tu tarea es analizar un mensaje inicial de un cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  // --------------------------------------------------------
+  // Mesaje Inicial:
+  // {HISTORY}
+  
+  // Posibles acciones a realizar:
+  // 1. SALUDO: Esta acción se debe realizar cuando el cliente inicia la conversación con un saludo génerico sin alguna preguta en especifico.
+  // 2. INFO: Esta acción se debe realizar cuando el cliente solicita información sobre los servicios que ofrecemos.
+  // 3. DISPONIBILIDAD: Esta acción se debe realizar cuando el cliente pide información sobre la disponibilidad para agendar una cita.
+  // -----------------------------
+  // Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  
+  // Respuesta ideal (SALUDO|INFO|DISPONIBILIDAD):`;
+
+  // generataInitFlowPrompt = (history: string) => {
+  //   return this.PROMPT_INIT_FLOW.replace('{HISTORY}', history);
+  // }
+// async availabilityFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed) {
+//   try {
+//       // Suponiendo que generatePromptFilter, aiService.desiredDateFn y Utilities están definidos anteriormente
+//       const promptGetDateAndHour = this.generatePromptFilter(historyParsed,messageEntry.content);
+//       const posibleDate = await this.aiService.desiredDateFn([
+//           {
+//               role: 'system',
+//               content: promptGetDateAndHour,
+//           },
+//       ]);
+
+//       let fullDate = posibleDate?.date ? posibleDate.date : '';
+//       console.log('fullDate:', fullDate);
+//       if (!fullDate) {
+//         fullDate = Utilities.today();
+//       }
+
+//       let queryDateTime = fullDate
+//       let availableSlots = { day: '', hours: [] };
+
+//       do {
+//         // Verificar si el día está dentro del horario de atención
+//         if (Utilities.isWithinBusinessHours(queryDateTime)) {
+//           // Buscar slots disponibles para el día
+//           availableSlots = await this.googleCalendarService.findAvailableSlots('abel3121@gmail.com', queryDateTime);
+//           if (availableSlots.hours.length === 0) {
+//             queryDateTime = Utilities.addBusinessDays(queryDateTime, 1);
+//             console.log('No hay slots disponibles para el día', queryDateTime);
+//           }
+//         } else {
+//           queryDateTime = Utilities.addBusinessDays(queryDateTime, 1);
+//           console.log('No es un día hábil, buscando siguiente día', queryDateTime);
+//         }
+//       } while (availableSlots.hours.length === 0); // Continuar hasta encontrar un día con al menos un slot disponible
+//       // Procesar y mostrar los slots disponibles
+//       // const parsedAvailableHours = Utilities.parseAvailableSpots(availableSlots);
+//       // console.log(parsedAvailableHours);
+//       // ctx.parsedAvailableHours = parsedAvailableHours;
+//       // await this.ctxService.updateCtx(ctx._id, ctx);
+//       // console.log('parsedAvailableHours', parsedAvailableHours)
+//       // const propmtAnswerDate = this.generatePromptAnswerDate(parsedAvailableHours,historyParsed);
+//       // console.log('propmtAnswerDate', propmtAnswerDate)
+//       let btnText = 'Ver horarios';
+//       let sections = Utilities.generateOneSectionTemplate('Fechas disponibles:',availableSlots)
+//       let bodyMessage = 'Por favor, selecciona una fecha y hora para agendar tu cita, si deseas otra fecha y hora por favor escribela.';
+//       // let combineTextList = Utilities.generateOneSectionTemplate(bodyMessage,sections);
+//       //     await this.historyService.setAndCreateAssitantMessage(
+//       //       messageEntry,
+//       //       combineTextList,
+//       //     )
+//       const newMessage = this.builderTemplate.buildInteractiveListMessage(messageEntry.clientPhone, btnText, sections , 'Lista',bodyMessage);
+//       await this.senderService.sendMessages(newMessage);
+//       ctx.step = '3';
+//       await this.ctxService.updateCtx(ctx._id, ctx);
+//       // const finalAnswer = await this.aiService.createChat([
+//       //   {
+//       //     role: 'system',
+//       //     content: propmtAnswerDate,
+//       //   }
+//       // ]);
+
+//       // const chunks = finalAnswer.split(/(?<!\d)\.\s+/g);
+//       // for (const chunk of chunks) {
+//       //   const newMessage =
+//       //     await this.historyService.setAndCreateAssitantMessage(
+//       //       messageEntry,
+//       //       chunk,
+//       //     );
+//       //   await this.senderService.sendMessages(
+//       //     this.builderTemplate.buildTextMessage(
+//       //       messageEntry.clientPhone,
+//       //       chunk,
+//       //     ),
+//       //   );
+//       // }
+
+
+//   } catch (err) {
+//       console.error(`[ERROR]:`, err);
+//   }
+// }
+
+// async INITFLOW(ctx: Ctx, messageEntry: IParsedMessage, historyParsed?: string) {
+//   try {
+//     await this.sendInfoFlow(ctx, messageEntry, historyParsed);
+//     ctx.step = '1';
+//     await this.ctxService.updateCtx(ctx._id, ctx);
+//   } catch (err) {
+//     console.log(`[ERROR]:`, err);
+//     return;
+//   }
+// }
+
+  // async INFO(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+  //   const analyzePrompt = this.generteInfoAvailablePrompt(historyParsed);
+  //   console.log('ANALYZE PROMPT:', analyzePrompt);
+  //   const response = await this.aiService.createChat([
+  //     {
+  //       role: 'system',
+  //       content: analyzePrompt,
+  //     },
+  //   ]);
+  //   if(response === 'INFO') {
+  //     await this.sendInfo(ctx, messageEntry, historyParsed);
+  //   } else {
+  //     console.log('DISPONIBILIDAD');
+  //     await this.sendAvailability(ctx, messageEntry, historyParsed);
+  //     ctx.step = '2';
+  //     await this.ctxService.updateCtx(ctx._id, ctx);
+  //   }
+  // }
+
+  // sendAvailability = async (ctx: Ctx, messageEntry: IParsedMessage,historyParsed: string) => {
+  //   const generatePromptFilter = this.generatePromptFilterDate(historyParsed, messageEntry.content);
+  //   console.log('PROMPT:', generatePromptFilter);
+  //   const response = await this.aiService.createChat([
+  //     {
+  //       role: 'system',
+  //       content: generatePromptFilter,
+  //     },
+  //   ]);
+  //   if(response === 'DISPONIBILIDAD') {
+  //     console.log('DISPONIBILIDAD');
+  //     await this.availabilityFlow(ctx, messageEntry, historyParsed);
+  //   }
+  //   else {
+  //     console.log('INFO');
+  //     await this.sendInfo(ctx, messageEntry, historyParsed);
+  //   }
+
+  //   // determinar si existe preferencia de fecha y hora o solo consulta por disponibilidad
+  //   // Si existe entonces buscamos en la db extraemos y construimos respuesta
+  //   // si no existe entonces le brindamos las opciones de fecha y hora disponibles mas prontas y aedmas lo invitamos a ingesar una fecha y hora
+  // }
+
+  // async AGENDAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+  //   try {
+  //     const messageOne = 'dame un momento para consultar la agenda...';
+  //     const saveMessageOne = await this.historyService.setAndCreateAssitantMessage(
+  //       { ...messageEntry },
+  //       messageOne,
+  //     );
+  //     await this.senderService.sendMessages(
+  //       this.builderTemplate.buildTextMessage(
+  //         messageEntry.clientPhone,
+  //         messageOne,
+  //       ),
+  //     );
+  //     const promptSchedule = this.generatePromptFilter(historyParsed, messageEntry.content);
+  //     const messageTwo = await this.aiService.desiredDateFn([
+  //       {
+  //         role: 'system',
+  //         content: promptSchedule,
+  //       }
+  //     ], 'gpt-4');
+  //     console.log('messageTwo', messageTwo)
+  //     const fullDate = messageTwo.date + ' ' + messageTwo.hour;
+  //     console.log('fullDate', fullDate)
+  //     const availableHours = await this.googleCalendarService.findAvailableSlots('abel3121@gmail.com',fullDate);
+  //     const parsedAvailableHours = Utilities.parseAvailableSpots(availableHours);
+  //     ctx.parsedAvailableHours = parsedAvailableHours;
+  //     await this.ctxService.updateCtx(ctx._id, ctx);
+  //     console.log('parsedAvailableHours', parsedAvailableHours)
+  //     const propmtAnswerDate = this.generatePromptAnswerDate(parsedAvailableHours,historyParsed);
+  //     console.log('propmtAnswerDate', propmtAnswerDate)
+  //     const finalAnswer = await this.aiService.createChat([
+  //       {
+  //         role: 'system',
+  //         content: propmtAnswerDate,
+  //       }
+  //     ]);
+
+  //     const chunks = finalAnswer.split(/(?<!\d)\.\s+/g);
+  //     for (const chunk of chunks) {
+  //       const newMessage =
+  //         await this.historyService.setAndCreateAssitantMessage(
+  //           messageEntry,
+  //           chunk,
+  //         );
+  //       await this.senderService.sendMessages(
+  //         this.builderTemplate.buildTextMessage(
+  //           messageEntry.clientPhone,
+  //           chunk,
+  //         ),
+  //       );
+  //     }
+
+  //   } catch (err) {
+  //     console.log(`[ERROR]:`, err);
+  //     return;
+  //   }
+  // }
+
+  // async HABLAR(ctx: Ctx, messageEntry: IParsedMessage, historyParsed?: string) {
+  //   try {
+  //     const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
+  //     const question = messageEntry.content;
+
+  //     const { response } = await this.langChainService.runChat(history, question);
+  //     const chunks = response.split(/(?<!\d)\.\s+/g);
+  //     for (const chunk of chunks) {
+  //       const newMessage =
+  //         await this.historyService.setAndCreateAssitantMessage(
+  //           messageEntry,
+  //           chunk,
+  //         );
+  //       await this.senderService.sendMessages(
+  //         this.builderTemplate.buildTextMessage(
+  //           messageEntry.clientPhone,
+  //           chunk,
+  //         ),
+  //       );
+  //     }
+
+  //   } catch (err) {
+  //     console.log(`[ERROR]:`, err);
+  //     return;
+  //   }
+  // }
+  // PROMPT_FILTER_DATE = `
+  // ### Contexto
+  // Eres un asistente de inteligencia artificial. Tu propósito es determinar la fecha y hora que el cliente desea agendar una reunión. Debes analizar la conversación y detectar si el cliente ha mencionado la fecha y hora de la reunión. Si el cliente no ha mencionado la fecha y hora, debes solicitarle la información faltante. Debes responder con un mensaje corto y amigable, utilizando emojis para hacer más amigable la conversación.
+ 
+  // ### Fecha y Hora Actual:
+  // {CURRENT_DAY}
+
+  // ### Historial de Conversación:
+  // {HISTORY}
+  // `;
+  // PROMPT_FILTER_DATE = `
+  // ### Contexto
+  // Eres un asistente de inteligencia artificial. Tu propósito es determinar la fecha y hora que el cliente quiere, en el formato yyyy/MM/dd HH:mm:ss.
+  
+  // ### Fecha y Hora Actual:
+  // {CURRENT_DAY}
+  
+  // ### Registro de Conversación:
+  // {HISTORY}
+
+  // Instrucciones:
+  // - No adivinar la fecha
+  
+  // Asistente: "{respuesta en formato (dd/mm/yyyy)}"
+  // `;
+
+
+//   PROMPT_SCHEDULE = `
+//   Como ingeniero de inteligencia artificial especializado en la programación de reuniones, tu objetivo es analizar la conversación y determinar la intención del cliente de programar una reunión, así como su preferencia de fecha y hora. La reunión durará aproximadamente 45 minutos y solo puede ser programada entre las 9am y las 4pm, de lunes a viernes, y solo para la semana en curso.
+
+//   Fecha de hoy: {CURRENT_DAY}
+
+//   Reuniones ya agendadas:
+//   -----------------------------------
+//   {AGENDA_ACTUAL}
+
+//   Historial de Conversacion:
+//   -----------------------------------
+//   {HISTORIAL_CONVERSACION}
+
+//   Ejemplos de respuestas adecuadas para sugerir horarios y verificar disponibilidad:
+//   ----------------------------------
+//   "Por supuesto, tengo un espacio disponible mañana, ¿a qué hora te resulta más conveniente?"
+//   "Sí, tengo un espacio disponible hoy, ¿a qué hora te resulta más conveniente?"
+//   "Lo siento, el miércoles a las 4 pm ya está reservado, pero tengo turnos disponibles a las 9 am, 10 am y 11 am. ¿Cuál prefieres?"
+//   "Ciertamente, tengo varios huecos libres esta semana. Por favor, indícame el día y la hora que prefieres."
+//   "Los turnos disponibles mas pronto son el martes a las 9 am, 10 am y 11 am. ¿Cuál prefieres?"
+
+//   INSTRUCCIONES:
+//   ----------------------------------
+//   - No inicies con un saludo.
+//   -Si el cliente pregunta disponibilidad sin especificar fecha ni hora:
+//     Responde preguntando si tiene alguna fecha y hora en especial en mente.
+//     Ejemplo de respuesta: "¿Tienes alguna fecha y hora específica en mente para nuestra reunión?"
+//   -Si el cliente pregunta disponibilidad solo indicando la hora:
+//     Verifica primero si hay disponibilidad para esa hora el día de hoy. Considera si la hora ya ha pasado.
+//   -Si no hay disponibilidad hoy o la hora ya ha pasado, indica los turnos más próximos disponibles.
+//     Ejemplo de respuesta: "Para hoy ya no tenemos disponibilidad a esa hora, pero los próximos espacios disponibles son [listar tres próximas horas disponibles]. ¿Te conviene alguno de estos horarios?"
+//   -Si el cliente pregunta disponibilidad solo indicando la fecha:
+//     Busca en esa fecha las 3 horas disponibles más próximas y pregunta si desea alguna de esas o si prefiere otra hora.
+//     Ejemplo de respuesta: "Para el [fecha], tengo los siguientes horarios disponibles: [hora 1], [hora 2], [hora 3]. ¿Te gustaría reservar alguno de estos, o prefieres otra hora?"
+//   -Si el cliente pregunta disponibilidad con fecha y hora:
+//     Verifica si hay disponibilidad para esa fecha y hora.
+//     Si está disponible, pide al cliente que confirme.
+//     Si no está disponible, indica las fechas disponibles más próximas.
+//     Ejemplo de respuesta: "Para el [fecha] a las [hora], tenemos disponibilidad. ¿Te gustaría confirmar este horario para nuestra reunión? 📅⏰"
+//   - Si no hay disponibilidad: "Lo siento, pero no tenemos disponibilidad para esa hora. Los próximos espacios disponibles son [listar tres próximos horarios disponibles]. ¿Te gustaría reservar alguno de estos? 📅⏰"  - Las reuniones solo pueden ser programadas entre las 9am y las 4pm, de lunes a viernes.
+//   - Cada reunion dura 45 minutos.
+//   - Cada reunion empieza en punto. Es decir 9:00 , 10:00 , 11:00 , 12:00 , 13:00 , 14:00 , 15:00 , 16:00
+//   - Las respuestas deben ser cortas y adecuadas para WhatsApp, utilizando emojis para mayor claridad y amabilidad.
+//   - Utiliza la información del historial de conversción y la agenda para calcular las respuestas.
+// `
+  //   PROMPT_DETERMINATE_DATE = `
+//   Como Ingeniero de Inteligencia Artificial especializado en la coordinación de citas, tu objetivo principal es interpretar y ajustar las solicitudes de programación de citas de los clientes, las cuales están disponibles de lunes a viernes, entre las 9 a.m. y las 5 p.m. Tu responsabilidad es analizar detenidamente las preferencias de fecha y hora de los clientes, alineándolas con nuestro horario operativo y basándote en expresiones de tiempo específicas que ellos proporcionen.
+
+//   Fecha de Hoy: {CURRENT_DAY}
+  
+//   Instrucciones Detalladas de Procesamiento:
+  
+//   Determinación y Ajuste de la Fecha y Hora Solicitadas: Debes identificar con precisión la fecha y la hora (o el momento del día) que el cliente requiere para su cita, a partir de su solicitud. Ajusta la hora exacta si se proporciona; en caso de que el cliente solo indique una parte del día, asigna un rango horario estándar (AM para la mañana o PM para la tarde).
+  
+//   Configuración de Fechas según Expresiones Temporales Comunes y Construcción del JSON:
+  
+//   "Para de aquí a más tarde"/"Para hoy más tarde": Fija la fecha para el mismo día y señala la próxima hora disponible dentro de nuestro horario.
+//   "Para mañana por la mañana": Ajusta la fecha para el próximo día hábil y establece la hora en "AM".
+//   "Para mañana por la tarde": Ajusta la fecha para el próximo día hábil y establece la hora en "PM".
+//   "Para dentro de un mes"/"El siguiente mes": Establece la fecha al primer día hábil del mes siguiente.
+//   "La otra semana": Programa la cita para el primer día laborable de la próxima semana.
+//   "Para la quincena": Fija la fecha para el día 15 del mes actual o del siguiente, según lo que sea más próximo.
+//   "Inicios de mes": Selecciona una fecha dentro de los primeros cinco días hábiles del mes siguiente.
+//   "Cualquier día por la mañana": Ajusta la fecha según lo solicitado y establece la hora en "AM".
+//   "Cualquier día por la tarde": Ajusta la fecha según lo solicitado y establece la hora en "PM".
+//   Cada configuración debe reflejarse adecuadamente en una respuesta estructurada en formato JSON, que incluya las claves "date", "hour", y "default":
+  
+//   "date": La fecha ajustada en formato "dd/mm/yyyy". Si la fecha no puede establecerse, utiliza "NF".
+//   "hour": La hora ajustada en formato de 12 horas "HH:MM AM/PM" si se proporciona una hora específica, o "AM"/"PM" si se indica un periodo del día. Utiliza "NF" si la hora no puede determinarse.
+//   "default": Este campo debe llenarse únicamente si tanto 'date' como 'hour' son "NF". En ese caso, debe contener la frase "Por favor, proporcione más detalles si necesitamos más información para determinar una fecha u hora adecuadas". De lo contrario, debe estar vacío o contener "NF".  Formato de Respuesta Esperado:
+//   {
+//     "date": "{fecha calculada}" o "NF",
+//     "hour": "{hora calculada}" o "AM"/"PM" o "NF",
+//     "default": "NF" o "Por favor, proporcione más detalles si necesitamos más información para determinar una fecha u hora adecuadas."
+// }
+//    `;
+
+    // generateSchedulePrompt = (summary: string, history: string) => {
+  //   const nowDate = Utilities.todayHour()
+  //   const mainPrompt = this.PROMPT_SCHEDULE
+  //     .replace('{AGENDA_ACTUAL}', summary)
+  //     .replace('{HISTORIAL_CONVERSACION}', history)
+  //     .replace('{CURRENT_DAY}', nowDate)
+  //   console.log('mainPrompt', mainPrompt)
+  //   return mainPrompt
+  // }
+
+     // generateDeterminateDatePrompt = () => {
+  //   const nowDate = Utilities.todayHour()
+  //   const mainPrompt = this.PROMPT_FILTER_DATE
+  //     .replace('{CURRENT_DAY}', nowDate)
+  //   return mainPrompt
+  // }
+   // PROMPT_ANSWER_DATE = `
+  // ### Contexto
+  // Debes analizar el historial de la conversación y debes determinar si existe disponibilidad para la fecha y hora solicitada por el cliente. Si no hay disponibilidad, debes sugerir las fechas y horas más próximas disponibles. Debes responder con un mensaje corto y amigable, utilizando emojis para mayor claridad y amabilidad.
+
+  // ### Fecha y Hora Actual:
+  // {CURRENT_DAY}
+  
+  // ### Registro de Conversación:
+  // {HISTORY}
+
+  // ### Horarios disponibles:
+  // {AVAILABLE_HOURS}
+
+  // Instrucciones:
+  // - Debes preguntar siempre si confirma la hora y fecha en caso el cliente hay expresado ambos en la conversación, en todo caso debes preguntarle
+  // las sugerencias de horarios disponibles.
+  // - Usa emojis para hacer más amigable la conversación.
+  // - Si en caso no exista disponibilidad debes preguntar si desea otra fecha y hora.
+  // `
+  // PROMPT_SELLER = `	
+  //   Bienvenido a "LaBurger Lima", tu destino para auténticas hamburguesas al carbón en el distrito de Surquillo. Nos encontramos en el corazón de Lima, en Av. Principal 501, Surquillo. Soy tu Asistente Virtual, listo para ayudarte en lo que necesites. 
+    
+  //   FECHA DE HOY: {CURRENT_DAY}
+  //   INIT: {INIT}
+
+  //   SOBRE "LaBurger Lima":
+  //   En LaBurger Lima, nos enorgullecemos de ofrecer hamburguesas hechas a la perfección al carbón, utilizando sólo carne de res 100% natural para proporcionarte una experiencia culinaria excepcional. Estamos abiertos todos los días desde las 7:00 PM hasta las 11:00 PM. Si necesitas más información o deseas realizar un pedido, no dudes en llamarnos al 934504415 durante nuestro horario de atención o visitarnos en nuestra dirección en Av. Principal 501, Surquillo, Lima. Aceptamos efectivo , todo las tarjetas , yape o plin.
+    
+  //   MENÚ COMPLETO:
+
+  //   HAMBURGUESAS:
+  //   - Burger Doble (2 carnes de 130 gr): S/.17.9
+  //   - Burger Royal (con huevo frito): S/.14.9
+  //   - Burger a lo pobre (con plátano frito): S/.16.9
+  //   - Burger Hawaiana (con Piña, queso y jamón): S/.16.9
+  //   - Burger Bacon (con Tocino ahumado): S/.15.9
+  //   - Burger Caramel / Cheddar (con cebollas caramelizadas y queso Cheddar): S/.15.9
+  //   - Burger Argentina (con chorizo parrillero): S/.17.9
+  //   - Burger Clásica (con papas al hilo, lechuga y tomate): S/.13.9
+  //   - Burger Cheese (con Queso Edam o Cheddar): S/.14.9
+  //   - Burger Deluxe (con 4 toppings a elección, no incluye chorizo/carne extra): S/.18.9
+    
+  //   ADICIONALES O TOPPINGS (Solo para hamburguesas y otros):
+  //   - Jamón: S/.2
+  //   - Filete de pollo Extra: S/.6
+  //   - Tocino: S/.3
+  //   - Queso Edam: S/.2
+  //   - Queso Cheddar: S/.2
+  //   - Plátano frito: S/.2
+  //   - Piña: S/.2
+  //   - Huevo: S/.2
+  //   - Carne extra: S/.5
+  //   - Chorizo: S/.5
+  //   - Cebolla Caramelizada: S/.2
+    
+  //   BEBIDAS:
+  //   - Agua San Carlos (500ml): S/.2
+  //   - Sprite (500ml): S/.5
+  //   - Shandy (Cerveza Lager y bebida gasificada): S/.7
+  //   - Coca Cola Zero (300ml): S/.4
+  //   - Inca Kola (500ml): S/.5
+  //   - Pepsi (355ml): S/.2.5
+  //   - 7 Up (355ml): S/.1
+  //   - Fanta (500ml): S/.5
+  //   - Inca Kola Zero (300ml): S/.4
+  //   - Guarana (330ml): S/.2.5
+  //   - Concordia Piña (355ml): S/.2.5
+    
+  //   OTROS:
+  //   - Salchipapa Deluxe (con 3 toppings a elección): S/.18.9
+  //   - Filete de Pollo a la parrilla: S/.14.9
+  //   - Papas fritas Crocantes (150 gr): S/.6
+  //   - Camote frito: S/.6
+  //   - Salchipapa con Queso y Tocino: S/.17.9
+  //   - Salchipapa Frankfuter: S/.14.9
+  //   - Choripan con Chimichurri: S/.10.9
+  //   - Salchipapa con Queso Cheddar: S/.15.9
+  //   - Combo papas fritas + Gaseosa PepsiCo: S/.6
+  //   - Combo camote frito + Gaseosa PepsiCo: S/.6
+    
+  //   CREMAS DISPONIBLES:
+  //   - Ketchup
+  //   - Mayonesa
+  //   - Mostaza
+  //   - Ají
+  //   - Aceituna
+  //   - Rocoto
+
+  //   HISTORIAL DE CONVERSACIÓN:
+  //   --------------
+  //   {HISTORIAL_CONVERSACION}
+  //   --------------
+    
+  //   DIRECTRICES DE INTERACCIÓN:
+  //   1. Proporciona información detallada y precisa sobre nuestros platos cuando se solicite.
+  //   2. Anima a los clientes a realizar sus pedidos directamente a través de este chat.
+  //   3. Confirma los detalles del pedido con el cliente para asegurar su total satisfacción.
+  //   4. Si INIT es 1, omite el saludo inicial para evitar repeticiones y procede directamente con la consulta o servicio requerido.
+  //   5. Cuando saludes siempre di el nombre del restaurante y además dejas indicando que le dejas un link de la carta.
+
+  //   EJEMPLOS DE RESPUESTAS:
+  //   "Bienvenido a LaBurger Lima, ¿te gustaría ordenar alguna de nuestras hamburguesas destacadas o necesitas alguna recomendación?"
+  //   "¡Por supuesto! ¿Te gustaría ordenar alguna de nuestras hamburguesas destacadas o necesitas alguna recomendación?"
+  //   "Estoy aquí para ayudarte con tu pedido, ¿qué te gustaría probar hoy?"
+  //   " Para terminar con tu orden necesito tu nombre y dirección de entrega por favor"
+  //   "¿Te interesa probar nuestra Hamburguesa Especial de la Casa o prefieres algo más tradicional como nuestra Hamburguesa Clásica?"
+    
+  //   INSTRUCCIONES:
+  //   - Utiliza respuestas cortas y claras, ideales para enviar por WhatsApp.
+  //   - En lo posible agregar emojis al mensaje.
+  //   - Mantén las respuestas basadas en el menú y la información proporcionada.
+  //   - Si INIT es 1, evita el saludo inicial para no ser repetitivo y ofrece directamente la asistencia.
+  //   `;
+
+  // generatePromptSeller = (history: string) => {
+  //   let init = '0';
+  //   if (history.includes('Vendedor')) {
+  //     init = '1';
+  //   }
+  //   const nowDate = getFullCurrentDate();
+  //   return this.PROMPT_SELLER.replace('{HISTORIAL_CONVERSACION}', history)
+  //     .replace('{CURRENT_DAY}', nowDate)
+  //     .replace('{INIT}', init);
+  // };
+
+  // async INFO(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+  //   try {
+  //     const prompt = this.generatePromptSeller(historyParsed);
+  //     console.log('PROMPT:', prompt);
+  //     const text = await this.aiService.createChat([
+  //       {
+  //         role: 'system',
+  //         content: prompt,
+  //       },
+  //     ]);
+
+  //     const chunks = text.split(/(?<!\d)\.\s+/g);
+  //     for (const chunk of chunks) {
+  //       const newMessage =
+  //         await this.historyService.setAndCreateAssitantMessage(
+  //           messageEntry,
+  //           chunk,
+  //         );
+  //       await this.senderService.sendMessages(
+  //         this.builderTemplate.buildTextMessage(
+  //           messageEntry.clientPhone,
+  //           chunk,
+  //         ),
+  //       );
+  //     }
+  //   } catch (err) {
+  //     console.log(`[ERROR]:`, err);
+  //     return;
+  //   }
+  // }
 
   //   PROMPT_GET_PRODUCTS = `
   //   Basado en el historial de la conversación proporcionada y nuestra lista de productos disponibles, tu tarea es identificar y extraer las menciones finales de productos y adicionales realizadas por el cliente, organizándolos en grupos según su relación en el pedido. Considera que algunos productos pueden ser parte de un combo o tener adicionales especificados por el cliente.
@@ -550,330 +964,435 @@ export class FlowsService {
   // ]
   //   Asegúrate de que el array final sea una representación precisa de la última conversación con el cliente, utilizando los nombres reales de los productos y adicionales tal como están registrados en nuestra base de datos.
   //   `;
-  PROMPT_GET_PRODUCTS = `Basándonos en la siguiente conversación entre un cliente y un vendedor, y considerando nuestra carta de menú detallada, tu tarea es identificar y listar todos los productos finales mencionados por el cliente, asegurándote de corregir y adaptar cualquier mención a los nombres exactos de los productos tal como aparecen en nuestra carta. Si en caso no exista el producto mencionado por el cliente entonces este no agregarlo a la respuesta.Considera los cambios realizados durante la conversación, como adiciones o eliminaciones de productos.
-Historial de la Conversación:
---------------
-{CONVERSATION_HISTORY}
---------------
- MENÚ COMPLETO:
---------------
-HAMBURGUESAS:
-    - Burger Doble (2 carnes de 130 gr): S/.17.9
-    - Burger Royal (con huevo frito): S/.14.9
-    - Burger a lo pobre (con plátano frito): S/.16.9
-    - Burger Hawaiana (con Piña, queso y jamón): S/.16.9
-    - Burger Bacon (con Tocino ahumado): S/.15.9
-    - Burger Caramel / Cheddar (con cebollas caramelizadas y queso Cheddar): S/.15.9
-    - Burger Argentina (con chorizo parrillero): S/.17.9
-    - Burger Clásica (con papas al hilo, lechuga y tomate): S/.13.9
-    - Burger Cheese (con Queso Edam o Cheddar): S/.14.9
-    - Burger Deluxe (con 4 toppings a elección, no incluye chorizo/carne extra): S/.18.9
+//   PROMPT_GET_PRODUCTS = `Basándonos en la siguiente conversación entre un cliente y un vendedor, y considerando nuestra carta de menú detallada, tu tarea es identificar y listar todos los productos finales mencionados por el cliente, asegurándote de corregir y adaptar cualquier mención a los nombres exactos de los productos tal como aparecen en nuestra carta. Si en caso no exista el producto mencionado por el cliente entonces este no agregarlo a la respuesta.Considera los cambios realizados durante la conversación, como adiciones o eliminaciones de productos.
+// Historial de la Conversación:
+// --------------
+// {CONVERSATION_HISTORY}
+// --------------
+//  MENÚ COMPLETO:
+// --------------
+// HAMBURGUESAS:
+//     - Burger Doble (2 carnes de 130 gr): S/.17.9
+//     - Burger Royal (con huevo frito): S/.14.9
+//     - Burger a lo pobre (con plátano frito): S/.16.9
+//     - Burger Hawaiana (con Piña, queso y jamón): S/.16.9
+//     - Burger Bacon (con Tocino ahumado): S/.15.9
+//     - Burger Caramel / Cheddar (con cebollas caramelizadas y queso Cheddar): S/.15.9
+//     - Burger Argentina (con chorizo parrillero): S/.17.9
+//     - Burger Clásica (con papas al hilo, lechuga y tomate): S/.13.9
+//     - Burger Cheese (con Queso Edam o Cheddar): S/.14.9
+//     - Burger Deluxe (con 4 toppings a elección, no incluye chorizo/carne extra): S/.18.9
     
-    ADICIONALES (Solo para hamburguesas y otros):
-    - Jamón: S/.2
-    - Filete de pollo Extra: S/.6
-    - Tocino: S/.3
-    - Queso Edam: S/.2
-    - Queso Cheddar: S/.2
-    - Plátano frito: S/.2
-    - Piña: S/.2
-    - Huevo: S/.2
-    - Carne extra: S/.5
-    - Chorizo: S/.5
-    - Cebolla Caramelizada: S/.2
+//     ADICIONALES (Solo para hamburguesas y otros):
+//     - Jamón: S/.2
+//     - Filete de pollo Extra: S/.6
+//     - Tocino: S/.3
+//     - Queso Edam: S/.2
+//     - Queso Cheddar: S/.2
+//     - Plátano frito: S/.2
+//     - Piña: S/.2
+//     - Huevo: S/.2
+//     - Carne extra: S/.5
+//     - Chorizo: S/.5
+//     - Cebolla Caramelizada: S/.2
     
-    BEBIDAS:
-    - Agua San Carlos (500ml): S/.2
-    - Sprite (500ml): S/.5
-    - Shandy (Cerveza Lager y bebida gasificada): S/.7
-    - Coca Cola Zero (300ml): S/.4
-    - Inca Kola (500ml): S/.5
-    - Pepsi (355ml): S/.2.5
-    - 7 Up (355ml): S/.1
-    - Fanta (500ml): S/.5
-    - Inca Kola Zero (300ml): S/.4
-    - Guarana (330ml): S/.2.5
-    - Concordia Piña (355ml): S/.2.5
+//     BEBIDAS:
+//     - Agua San Carlos (500ml): S/.2
+//     - Sprite (500ml): S/.5
+//     - Shandy (Cerveza Lager y bebida gasificada): S/.7
+//     - Coca Cola Zero (300ml): S/.4
+//     - Inca Kola (500ml): S/.5
+//     - Pepsi (355ml): S/.2.5
+//     - 7 Up (355ml): S/.1
+//     - Fanta (500ml): S/.5
+//     - Inca Kola Zero (300ml): S/.4
+//     - Guarana (330ml): S/.2.5
+//     - Concordia Piña (355ml): S/.2.5
     
-    OTROS:
-    - Salchipapa Deluxe (con 3 toppings a elección): S/.18.9
-    - Filete de Pollo a la parrilla: S/.14.9
-    - Papas fritas Crocantes (150 gr): S/.6
-    - Camote frito: S/.6
-    - Salchipapa con Queso y Tocino: S/.17.9
-    - Salchipapa Frankfuter: S/.14.9
-    - Choripan con Chimichurri: S/.10.9
-    - Salchipapa con Queso Cheddar: S/.15.9
-    - Combo papas fritas + Gaseosa PepsiCo: S/.6
-    - Combo camote frito + Gaseosa PepsiCo: S/.6
+//     OTROS:
+//     - Salchipapa Deluxe (con 3 toppings a elección): S/.18.9
+//     - Filete de Pollo a la parrilla: S/.14.9
+//     - Papas fritas Crocantes (150 gr): S/.6
+//     - Camote frito: S/.6
+//     - Salchipapa con Queso y Tocino: S/.17.9
+//     - Salchipapa Frankfuter: S/.14.9
+//     - Choripan con Chimichurri: S/.10.9
+//     - Salchipapa con Queso Cheddar: S/.15.9
+//     - Combo papas fritas + Gaseosa PepsiCo: S/.6
+//     - Combo camote frito + Gaseosa PepsiCo: S/.6
     
-    CREMAS DISPONIBLES:
-    - Ketchup
-    - Mayonesa
-    - Mostaza
-    - Ají
-    - Aceituna
-    - Rocoto
---------------
+//     CREMAS DISPONIBLES:
+//     - Ketchup
+//     - Mayonesa
+//     - Mostaza
+//     - Ají
+//     - Aceituna
+//     - Rocoto
+// --------------
 
- INSTRUCCIONES:
+//  INSTRUCCIONES:
 
--Extracción y Verificación: Analiza cuidadosamente la conversación entre el cliente y el vendedor. Identifica los productos mencionados y verifica cada uno contra nuestra carta de menú detallada.
--Filtrado de Productos: Incluye en el array final únicamente aquellos productos que coinciden exactamente con los ítems disponibles en nuestra carta. Los productos que no estén en la carta NO deben ser agregados al array.
--Detalles del Pedido: Para los productos que sí se encuentran en la carta, lista su nombre exacto como aparece en el menú, la cantidad solicitada y cualquier especificación adicional mencionada por el cliente.
--Organización del Pedido: Presenta la información de manera ordenada y clara, reflejando el pedido actualizado del cliente según la conversación, pero solo incluyendo los productos que se validaron como parte de la carta.
--Confirmación Final: Revisa que cada ítem incluido en el array final realmente exista en la carta del menú y corresponda a las especificaciones del cliente.
+// -Extracción y Verificación: Analiza cuidadosamente la conversación entre el cliente y el vendedor. Identifica los productos mencionados y verifica cada uno contra nuestra carta de menú detallada.
+// -Filtrado de Productos: Incluye en el array final únicamente aquellos productos que coinciden exactamente con los ítems disponibles en nuestra carta. Los productos que no estén en la carta NO deben ser agregados al array.
+// -Detalles del Pedido: Para los productos que sí se encuentran en la carta, lista su nombre exacto como aparece en el menú, la cantidad solicitada y cualquier especificación adicional mencionada por el cliente.
+// -Organización del Pedido: Presenta la información de manera ordenada y clara, reflejando el pedido actualizado del cliente según la conversación, pero solo incluyendo los productos que se validaron como parte de la carta.
+// -Confirmación Final: Revisa que cada ítem incluido en el array final realmente exista en la carta del menú y corresponda a las especificaciones del cliente.
 
-Nota Adicional: Asegúrate de revisar cada pedido contra la carta para confirmar la disponibilidad antes de incluir cualquier producto en el array final. Este enfoque garantiza que solo los productos válidos y confirmados se reflejen en el pedido finalizado.
+// Nota Adicional: Asegúrate de revisar cada pedido contra la carta para confirmar la disponibilidad antes de incluir cualquier producto en el array final. Este enfoque garantiza que solo los productos válidos y confirmados se reflejen en el pedido finalizado.
 
 
-EJEMPLO RESPUESTA:
-[
-    {
-        "producto": "Burger Deluxe",
-        "cantidad": 1,
-        "adicionales": [],
-        "notas": []
-    },
-    {
-        "producto": "Papas fritas Crocantes",
-        "cantidad": 1,
-        "adicionales": [],
-        "notas": []
-    },
-    {
-        "producto": "Burger Clásica",
-        "cantidad": 1,
-        "adicionales": ["Mayonesa"],
-        "notas": [ ]
-    }
-]
-EJEMPLO SIN PRODUCTOS
- [ ]
-`
-  generatePromptGetProducts = (history: string, productsDB: any) => {
-    let productsDbParsed = JSON.stringify(productsDB);
-    return this.PROMPT_GET_PRODUCTS.replace(
-      '{CONVERSATION_HISTORY}',
-      history,
-    ).replace('{PRODUCT_LIST}', productsDbParsed);
-  };
+// EJEMPLO RESPUESTA:
+// [
+//     {
+//         "producto": "Burger Deluxe",
+//         "cantidad": 1,
+//         "adicionales": [],
+//         "notas": []
+//     },
+//     {
+//         "producto": "Papas fritas Crocantes",
+//         "cantidad": 1,
+//         "adicionales": [],
+//         "notas": []
+//     },
+//     {
+//         "producto": "Burger Clásica",
+//         "cantidad": 1,
+//         "adicionales": ["Mayonesa"],
+//         "notas": [ ]
+//     }
+// ]
+// EJEMPLO SIN PRODUCTOS
+//  [ ]
+// `
+  // generatePromptGetProducts = (history: string, productsDB: any) => {
+  //   let productsDbParsed = JSON.stringify(productsDB);
+  //   return this.PROMPT_GET_PRODUCTS.replace(
+  //     '{CONVERSATION_HISTORY}',
+  //     history,
+  //   ).replace('{PRODUCT_LIST}', productsDbParsed);
+  // };
 
-  PROMPT_BUILD_ORDER = `
-  Basado en el historial de la conversación proporcionada y la lista de productos seleccionados por el cliente, tu tarea es crear un array de objetos que represente el pedido final de manera precisa. Cada objeto debe seguir nuestra estructura estándar para un producto ordenado, completando las propiedades conocidas basadas en la información proporcionada y dejando vacías aquellas que sean desconocidas.
+//   PROMPT_BUILD_ORDER = `
+//   Basado en el historial de la conversación proporcionada y la lista de productos seleccionados por el cliente, tu tarea es crear un array de objetos que represente el pedido final de manera precisa. Cada objeto debe seguir nuestra estructura estándar para un producto ordenado, completando las propiedades conocidas basadas en la información proporcionada y dejando vacías aquellas que sean desconocidas.
 
-  Glosario:
-  - Producto: Cualquier ítem que el cliente puede ordenar directamente.
-  - Adicional/Topping: Ingredientes o ítems que se añaden a un producto principal, identificados en las menciones de la conversación.
-  - Combo: Un paquete de productos ofrecidos a un precio especial, que puede incluir el producto principal junto con varios adicionales o toppings específicos.
-  Historial de la Conversación:
-  {CONVERSATION_HISTORY}
+//   Glosario:
+//   - Producto: Cualquier ítem que el cliente puede ordenar directamente.
+//   - Adicional/Topping: Ingredientes o ítems que se añaden a un producto principal, identificados en las menciones de la conversación.
+//   - Combo: Un paquete de productos ofrecidos a un precio especial, que puede incluir el producto principal junto con varios adicionales o toppings específicos.
+//   Historial de la Conversación:
+//   {CONVERSATION_HISTORY}
   
-  Productos Seleccionados (validados de la base de datos):
-  {VALIDATED_PRODUCTS}
+//   Productos Seleccionados (validados de la base de datos):
+//   {VALIDATED_PRODUCTS}
 
-  Instrucciones Detalladas:
-  1. Examina la información proporcionada en la conversación y los productos seleccionados para determinar los detalles finales del pedido, incluyendo la cantidad de cada producto y los adicionales mencionados.
-  2. Establece la 'quantity' y 'subtotal' para cada producto basándote en la conversación; asume 1 como cantidad predeterminada si no se especifica.
-  3. Identifica los 'toppings' y 'sauce' mencionados para cada producto. Asigna como 'toppings' aquellos adicionales mencionados que aumentan el precio.
-  4. Para los productos clasificados como 'combo', utiliza el nombre del producto como 'name' y lista los productos o toppings que se mencionan como incluidos en la propiedad 'combo', basándote en la descripción del producto. Si los toppings son parte de la descripción del combo incluido, estos deben ser clasificados en 'combo', no en 'toppings', y no deben incrementar el precio del combo.
-  5. Deja cualquier propiedad desconocida o no mencionada como vacía.
+//   Instrucciones Detalladas:
+//   1. Examina la información proporcionada en la conversación y los productos seleccionados para determinar los detalles finales del pedido, incluyendo la cantidad de cada producto y los adicionales mencionados.
+//   2. Establece la 'quantity' y 'subtotal' para cada producto basándote en la conversación; asume 1 como cantidad predeterminada si no se especifica.
+//   3. Identifica los 'toppings' y 'sauce' mencionados para cada producto. Asigna como 'toppings' aquellos adicionales mencionados que aumentan el precio.
+//   4. Para los productos clasificados como 'combo', utiliza el nombre del producto como 'name' y lista los productos o toppings que se mencionan como incluidos en la propiedad 'combo', basándote en la descripción del producto. Si los toppings son parte de la descripción del combo incluido, estos deben ser clasificados en 'combo', no en 'toppings', y no deben incrementar el precio del combo.
+//   5. Deja cualquier propiedad desconocida o no mencionada como vacía.
   
-  Ejemplo de Estructura de Pedido para el Array Final:
-  [
-      {
-          "id": "1070",
-          "name": "Burger Deluxe",
-          "price": 18.9,
-          "quantity": 1,
-          "subtotal": 18.9,
-          "description": "Burger c/4 toppings a elección incluidos",
-          "notes": "Adicional de chorizo",
-          "active": true,
-          "toppings": [],
-          "sauce": [],
-          "combo": [{"name": "Jamón"}, {"name": "Filete de pollo Extra"}, {"name": "Tocino"}, {"name": "Queso Cheddar"}]
-      },
-      {
-          "name": "Burger Simple con Huevo",
-          "price": [determinar según base de datos si disponible],
-          "quantity": 1,
-          "subtotal": [calcular basado en precio y adicionales],
-          "description": "Burger simple con adicional de huevo",
-          "notes": "",
-          "active": [determinar si activo según base de datos],
-          "toppings": [{"name": "Huevo", "price": [precio del huevo si es adicional]}],
-          "sauce": [],
-          "combo": []
-      }
-      // Añade más objetos según cada producto en el pedido.
-  ]
+//   Ejemplo de Estructura de Pedido para el Array Final:
+//   [
+//       {
+//           "id": "1070",
+//           "name": "Burger Deluxe",
+//           "price": 18.9,
+//           "quantity": 1,
+//           "subtotal": 18.9,
+//           "description": "Burger c/4 toppings a elección incluidos",
+//           "notes": "Adicional de chorizo",
+//           "active": true,
+//           "toppings": [],
+//           "sauce": [],
+//           "combo": [{"name": "Jamón"}, {"name": "Filete de pollo Extra"}, {"name": "Tocino"}, {"name": "Queso Cheddar"}]
+//       },
+//       {
+//           "name": "Burger Simple con Huevo",
+//           "price": [determinar según base de datos si disponible],
+//           "quantity": 1,
+//           "subtotal": [calcular basado en precio y adicionales],
+//           "description": "Burger simple con adicional de huevo",
+//           "notes": "",
+//           "active": [determinar si activo según base de datos],
+//           "toppings": [{"name": "Huevo", "price": [precio del huevo si es adicional]}],
+//           "sauce": [],
+//           "combo": []
+//       }
+//       // Añade más objetos según cada producto en el pedido.
+//   ]
   
-  Recuerda detallar el pedido final del cliente utilizando la información proporcionada y siguiendo las especificaciones de la estructura del producto.
- `;
+//   Recuerda detallar el pedido final del cliente utilizando la información proporcionada y siguiendo las especificaciones de la estructura del producto.
+//  `;
 
-  generatePromptBuildOrder = (history: string, validProducts: any) => {
-    let validProductsParsed = JSON.stringify(validProducts);
-    return this.PROMPT_BUILD_ORDER.replace(
-      '{CONVERSATION_HISTORY}',
-      history,
-    ).replace('{VALIDATED_PRODUCTS}', validProductsParsed);
-  };
+  // generatePromptBuildOrder = (history: string, validProducts: any) => {
+  //   let validProductsParsed = JSON.stringify(validProducts);
+  //   return this.PROMPT_BUILD_ORDER.replace(
+  //     '{CONVERSATION_HISTORY}',
+  //     history,
+  //   ).replace('{VALIDATED_PRODUCTS}', validProductsParsed);
+  // };
 
-  async ORDER(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
-    try {
-      const productsDB = await this.googleSpreadsheetService.getProducts();
-      // debo determinar si el producto existe en el menu de la db
-      // si existe debo retornar el precio y la descripcion del producto
-      // si no existe debo retornar un mensaje de error
-      const prompt = this.generatePromptGetProducts(historyParsed, productsDB);
-      console.log('PROMPT:', prompt);
-      const text = await this.aiService.createChat([
-        {
-          role: 'system',
-          content: prompt,
-        },
-      ]);
-      const validProducts = JSON.parse(text);
-      console.log('VALID PRODUCTS:', validProducts);
-      const arrayValidProduct = await this.findAndProcessProducts(
-        validProducts,
-        productsDB,
-        historyParsed,
-      );
-      console.log('ARRAY VALID PRODUCTS:', arrayValidProduct);
-      // const findValidProducts = productsDB.filter(product => {
-      //   return arrayValidProduct.includes(product.name);
-      // })
-      // console.log('FIND VALID PRODUCTS:', findValidProducts);
-      const promptBuildOrder = this.generatePromptBuildOrder(historyParsed, arrayValidProduct);
-      console.log('PROMPT BUILD ORDER:', promptBuildOrder);
-      const textBuildOrder = await this.aiService.createChat([
-        {
-          role: 'system',
-          content: promptBuildOrder,
-        },
-      ]);
-      console.log('TEXT BUILD ORDER:', textBuildOrder);
-      const order = JSON.parse(textBuildOrder);
-      console.log('ORDER:', order);
-      const message = await this.buildOrderMessage(order);
-      const newMessage = await this.historyService.setAndCreateAssitantMessage(
-        messageEntry,
-        message,
-      );
-      await this.senderService.sendMessages(
-        this.builderTemplate.buildTextMessage(
-          messageEntry.clientPhone,
-          message,
-        ),
-      );
-      // const chunks = text.split(/(?<!\d)\.\s+/g);
-      // for (const chunk of chunks) {
-      //   const newMessage =
-      //     await this.historyService.setAndCreateAssitantMessage(
-      //       messageEntry,
-      //       chunk,
-      //     );
-      //   await this.senderService.sendMessages(
-      //     this.builderTemplate.buildTextMessage(
-      //       messageEntry.clientPhone,
-      //       chunk,
-      //     ),
-      //   );
-      // }
-    } catch (err) {
-      console.log(`[ERROR]:`, err);
-      return;
-    }
-  }
+  // async ORDER(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+  //   try {
+  //     const productsDB = await this.googleSpreadsheetService.getProducts();
+  //     // debo determinar si el producto existe en el menu de la db
+  //     // si existe debo retornar el precio y la descripcion del producto
+  //     // si no existe debo retornar un mensaje de error
+  //     const prompt = this.generatePromptGetProducts(historyParsed, productsDB);
+  //     console.log('PROMPT:', prompt);
+  //     const text = await this.aiService.createChat([
+  //       {
+  //         role: 'system',
+  //         content: prompt,
+  //       },
+  //     ]);
+  //     const validProducts = JSON.parse(text);
+  //     console.log('VALID PRODUCTS:', validProducts);
+  //     const arrayValidProduct = await this.findAndProcessProducts(
+  //       validProducts,
+  //       productsDB,
+  //       historyParsed,
+  //     );
+  //     console.log('ARRAY VALID PRODUCTS:', arrayValidProduct);
+  //     // const findValidProducts = productsDB.filter(product => {
+  //     //   return arrayValidProduct.includes(product.name);
+  //     // })
+  //     // console.log('FIND VALID PRODUCTS:', findValidProducts);
+  //     const promptBuildOrder = this.generatePromptBuildOrder(historyParsed, arrayValidProduct);
+  //     console.log('PROMPT BUILD ORDER:', promptBuildOrder);
+  //     const textBuildOrder = await this.aiService.createChat([
+  //       {
+  //         role: 'system',
+  //         content: promptBuildOrder,
+  //       },
+  //     ]);
+  //     console.log('TEXT BUILD ORDER:', textBuildOrder);
+  //     const order = JSON.parse(textBuildOrder);
+  //     console.log('ORDER:', order);
+  //     const message = await this.buildOrderMessage(order);
+  //     const newMessage = await this.historyService.setAndCreateAssitantMessage(
+  //       messageEntry,
+  //       message,
+  //     );
+  //     await this.senderService.sendMessages(
+  //       this.builderTemplate.buildTextMessage(
+  //         messageEntry.clientPhone,
+  //         message,
+  //       ),
+  //     );
+  //     // const chunks = text.split(/(?<!\d)\.\s+/g);
+  //     // for (const chunk of chunks) {
+  //     //   const newMessage =
+  //     //     await this.historyService.setAndCreateAssitantMessage(
+  //     //       messageEntry,
+  //     //       chunk,
+  //     //     );
+  //     //   await this.senderService.sendMessages(
+  //     //     this.builderTemplate.buildTextMessage(
+  //     //       messageEntry.clientPhone,
+  //     //       chunk,
+  //     //     ),
+  //     //   );
+  //     // }
+  //   } catch (err) {
+  //     console.log(`[ERROR]:`, err);
+  //     return;
+  //   }
+  // }
 
-  async findAndProcessProducts(orderList, productList, historyParsed) {
-    let productsValidated = [];
-    let finalOrder = [];
-    for (let orders of orderList) {
-      for (let orderItem of orders) {
-        // Find the first product that matches the order item
-        let product = productList.find((product) =>
-          product.name.toLowerCase().includes(orderItem.toLowerCase()),
-        );
+  // async findAndProcessProducts(orderList, productList, historyParsed) {
+  //   let productsValidated = [];
+  //   let finalOrder = [];
+  //   for (let orders of orderList) {
+  //     for (let orderItem of orders) {
+  //       // Find the first product that matches the order item
+  //       let product = productList.find((product) =>
+  //         product.name.toLowerCase().includes(orderItem.toLowerCase()),
+  //       );
 
-        if (product) {
-          productsValidated.push(product); // Add product to results
-          // await prompt(product); // Wait for the 'prompt' function to complete before continuing
-        }
-      }
-      // const promptBuildOrder = this.generatePromptBuildOrder(
-      //   historyParsed,
-      //   productsValidated,
-      // );
-      // console.log('PROMPT BUILD ORDER:', promptBuildOrder);
-      // const textBuildOrder = await this.aiService.createChat([
-      //   {
-      //     role: 'system',
-      //     content: promptBuildOrder,
-      //   },
-      // ]);
-      // console.log('TEXT BUILD ORDER:', textBuildOrder);
-      // const order = JSON.parse(textBuildOrder);
-      // console.log('ORDER:', order);
-      // finalOrder.push(order);
-      // productsValidated = [];
-    }
-    return productsValidated;
-  }
+  //       if (product) {
+  //         productsValidated.push(product); // Add product to results
+  //         // await prompt(product); // Wait for the 'prompt' function to complete before continuing
+  //       }
+  //     }
+  //     // const promptBuildOrder = this.generatePromptBuildOrder(
+  //     //   historyParsed,
+  //     //   productsValidated,
+  //     // );
+  //     // console.log('PROMPT BUILD ORDER:', promptBuildOrder);
+  //     // const textBuildOrder = await this.aiService.createChat([
+  //     //   {
+  //     //     role: 'system',
+  //     //     content: promptBuildOrder,
+  //     //   },
+  //     // ]);
+  //     // console.log('TEXT BUILD ORDER:', textBuildOrder);
+  //     // const order = JSON.parse(textBuildOrder);
+  //     // console.log('ORDER:', order);
+  //     // finalOrder.push(order);
+  //     // productsValidated = [];
+  //   }
+  //   return productsValidated;
+  // }
 
-  async buildOrderMessage(orderArray) {
-    let message = "🍔 Tu pedido en LaBurger Lima:\n\n";
-    let totalOrder = 0;
+  // async buildOrderMessage(orderArray) {
+  //   let message = "🍔 Tu pedido en LaBurger Lima:\n\n";
+  //   let totalOrder = 0;
 
-    orderArray.forEach(item => {
-      message += `${item.quantity}x ${item.name} - S/.${item.price}\n`;
-      if (item.combo.length > 0) {
-        message += "   Combo incluye:\n";
-        item.combo.forEach(comboItem => {
-          message += `   - ${comboItem.name}\n`; // Asumimos que los combos no modifican el precio
-        });
-      }
-      if (item.toppings.length > 0) {
-        message += "   Adicionales:\n";
-        item.toppings.forEach(topping => {
-          message += `   - ${topping.name}: S/.${topping.price}\n`;
-          item.subtotal += parseFloat(topping.price); // Asegúrate de que price es un número
-        });
-      }
-      if (item.sauce.length > 0) {
-        message += "   Salsas:\n";
-        item.sauce.forEach(sauce => {
-          message += `   - ${sauce.name}\n`; // Suponiendo que las salsas son gratis o ya están incluidas en el precio
-        });
-      }
-      if (item.notes) {
-        message += `   Notas: ${item.notes}\n`;
-      }
-      message += `   Subtotal: S/.${item.subtotal.toFixed(2)}\n\n`; // Asegura dos decimales en el subtotal
-      totalOrder += item.subtotal; // Suma al total del pedido
-    });
+  //   orderArray.forEach(item => {
+  //     message += `${item.quantity}x ${item.name} - S/.${item.price}\n`;
+  //     if (item.combo.length > 0) {
+  //       message += "   Combo incluye:\n";
+  //       item.combo.forEach(comboItem => {
+  //         message += `   - ${comboItem.name}\n`; // Asumimos que los combos no modifican el precio
+  //       });
+  //     }
+  //     if (item.toppings.length > 0) {
+  //       message += "   Adicionales:\n";
+  //       item.toppings.forEach(topping => {
+  //         message += `   - ${topping.name}: S/.${topping.price}\n`;
+  //         item.subtotal += parseFloat(topping.price); // Asegúrate de que price es un número
+  //       });
+  //     }
+  //     if (item.sauce.length > 0) {
+  //       message += "   Salsas:\n";
+  //       item.sauce.forEach(sauce => {
+  //         message += `   - ${sauce.name}\n`; // Suponiendo que las salsas son gratis o ya están incluidas en el precio
+  //       });
+  //     }
+  //     if (item.notes) {
+  //       message += `   Notas: ${item.notes}\n`;
+  //     }
+  //     message += `   Subtotal: S/.${item.subtotal.toFixed(2)}\n\n`; // Asegura dos decimales en el subtotal
+  //     totalOrder += item.subtotal; // Suma al total del pedido
+  //   });
 
-    message += `Total del pedido: S/.${totalOrder.toFixed(2)}`; // Total del pedido con dos decimales
-    return message;
-  }
+  //   message += `Total del pedido: S/.${totalOrder.toFixed(2)}`; // Total del pedido con dos decimales
+  //   return message;
+  // }
 
-  async ADDRESS(ctx: Ctx, messageEntry: IParsedMessage) { }
+  // async ADDRESS(ctx: Ctx, messageEntry: IParsedMessage) { }
 
-  async PAYMENT(ctx: Ctx, messageEntry: IParsedMessage) { }
+  // async PAYMENT(ctx: Ctx, messageEntry: IParsedMessage) { }
 
-  async getWhatsappMediaUrl({ imageId }: { imageId: string }) {
-    const getImage = await axios
-      .get(`https://graph.facebook.com/v19.0/${imageId}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.CURRENT_ACCESS_TOKEN}`,
-        },
-      })
-      .then((res) => res.data)
-      .catch((error) => console.error(error));
+  // PROMPT_FILTER_AVAILABLE =  `Como una inteligencia artificial avanzada, tu tarea es analizar [HISTORIAL_CONVERSACION] y seleccionar la acción más adecuada en respuesta a la [QUESTION].
+  // --------------------------------------------------------
+  // [HISTORIAL_CONVERSACION]:
+  // {HISTORY}
 
-    return getImage.url;
-  }
-}
+  // [QUESTION]:
+  // {QUESTION}
+  
+  // Posibles acciones a realizar:
+  // 1. INFO: Esta acción es cuando el cliente pregunta por información general sobre los servicios que ofrecemos y nada relacionado a la disponibilidad. Generalmente son preguntas acerca del servicio o precios.
+  // 2. DISPONIBILIDAD: Esta acción se debe realizar cuando el cliente expresa su deseo de programar una cita.
+  // 3. CONFIRMAR: Esta acción se debe realizar cuando el cliente confirma la hora y fecha de la cita despues de haberle brindado las opciones disponibles.
+  // -----------------------------
+
+  // Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  
+  
+  // Respuesta ideal (INFO|DISPONIBILIDAD|CONFIRMAR):`;
+
+  
+  // availabilityFlow = async (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) => {
+  //   try {
+  //     const promptGetDateAndHour = this.generatePromptFilter(historyParsed);
+  //     const posibleDate = await this.aiService.desiredDateFn([
+  //       {
+  //         role: 'system',
+  //         content: promptGetDateAndHour,
+  //       },
+  //     ]);
+  //     console.log('posibleDate:', posibleDate);
+  //     let possibleDay = posibleDate?.date || '';
+  //     let possibleHour = posibleDate?.hour || '';
+  //     let fullDate = `${possibleDay} ${possibleHour}`;
+  //     console.log('fullDate:', fullDate)
+  //     if(!fullDate) {
+  //       let fullDate = Utilities.today()
+  //     }
+  //     const validateDate = Utilities.isWithinBusinessHours(fullDate);
+  //     if(!validateDate) {
+  //       let message = 'Lo siento, la fecha y hora seleccionada no se encuentra dentro de nuestro horario de atención. Por favor, selecciona una fecha y hora dentro de nuestro horario de atención.';
+  //       const newMessage = await this.historyService.setAndCreateAssitantMessage(
+  //         messageEntry,
+  //         message,
+  //       );
+  //       await this.senderService.sendMessages(
+  //         this.builderTemplate.buildTextMessage(
+  //           messageEntry.clientPhone,
+  //           message,
+  //         ),
+  //       );
+  //       return;
+  //     }
+  //     const availableHours = await this.googleCalendarService.findAvailableSlots('abel3121@gmail.com',fullDate);
+  //     const parsedAvailableHours = Utilities.parseAvailableSpots(availableHours);
+  //     ctx.parsedAvailableHours = parsedAvailableHours;
+  //     await this.ctxService.updateCtx(ctx._id, ctx);
+  //     console.log('parsedAvailableHours', parsedAvailableHours)
+  //     const propmtAnswerDate = this.generatePromptAnswerDate(parsedAvailableHours,historyParsed);
+  //     console.log('propmtAnswerDate', propmtAnswerDate)
+  //     const finalAnswer = await this.aiService.createChat([
+  //       {
+  //         role: 'system',
+  //         content: propmtAnswerDate,
+  //       }
+  //     ]);
+
+  //     const chunks = finalAnswer.split(/(?<!\d)\.\s+/g);
+  //     for (const chunk of chunks) {
+  //       const newMessage =
+  //         await this.historyService.setAndCreateAssitantMessage(
+  //           messageEntry,
+  //           chunk,
+  //         );
+  //       await this.senderService.sendMessages(
+  //         this.builderTemplate.buildTextMessage(
+  //           messageEntry.clientPhone,
+  //           chunk,
+  //         ),
+  //       );
+  //     }
+
+
+  //   } catch (err) {
+  //     console.log(`[ERROR]:`, err);
+  //     return;
+  //   }
+  
+  // }
+
+  // sendGreetings = async (ctx: Ctx, messageEntry: IParsedMessage) => {
+  //   const clientName = messageEntry.clientName;
+  //   const text = `Hola ${clientName}, soy Ali, tu asistente virtual. Estoy aquí para ayudarte a mejorar tus procesos de ventas y la atención al cliente con inteligencia artificial. Puedo ofrecerte información sobre nuestros servicios y precios, ayudarte a agendar una demostración con nuestros especialistas, o resolver cualquier duda que tengas. ¿Cómo puedo asistirte hoy?`;
+  //   const newMessage = await this.historyService.setAndCreateAssitantMessage(
+  //     messageEntry,
+  //     text,
+  //   );
+  //   await this.senderService.sendMessages(
+  //     this.builderTemplate.buildTextMessage(
+  //       messageEntry.clientPhone,
+  //       text,
+  //     ),
+  //   );
+  // }
+
+//   sendAvailability = async (ctx: Ctx, messageEntry: IParsedMessage) => {
+//     const generatePromptFilter = this.generatePromptFilterDate();
+//     console.log('PROMPT:', generatePromptFilter);
+//     const response = await this.aiService.createChat([
+//       {
+//         role: 'system',
+//         content: generatePromptFilter,
+//       },
+//     ]);
+//     // determinar si existe preferencia de fecha y hora o solo consulta por disponibilidad
+//     // Si existe entonces buscamos en la db extraemos y construimos respuesta
+//     // si no existe entonces le brindamos las opciones de fecha y hora disponibles mas prontas y aedmas lo invitamos a ingesar una fecha y hora
+
+
+// }

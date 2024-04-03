@@ -38,8 +38,8 @@ export class BotService {
     const ctx = await this.ctxService.findOrCreateCtx(parsedMessage);
     Logger.log( `CTX  ${JSON.stringify(ctx)} `, 'BOT SERVICE');
     const history = await this.historyService.createAndGetHistoryParsed(parsedMessage);
-    const action = await this.analyzeMessage(ctx, history);
-    // const action = receivedMessageValidator(ctx, parsedMessage);
+    // const action = await this.analyzeMessage(ctx, history);
+    const action = receivedMessageValidator(ctx, parsedMessage);
     Logger.log( `THE ACTION IS: ${action} `, 'BOT SERVICE');
     if(action === 'NOT_VALID') {
       Logger.log( `ACTION NOT VALID`, 'BOT SERVICE');
@@ -126,7 +126,7 @@ export class BotService {
       Posibles acciones a realizar:
       1. AGENDAR: Esta acción se debe realizar cuando el cliente expresa su deseo de programar una cita.
       2. HABLAR: Esta acción se debe realizar cuando el cliente desea hacer una pregunta o necesita más información.
-      3. CONFIRMAR: Esta acción se debe realizar cuando el cliente y el vendedor llegaron a un acuerdo mutuo proporcionando una fecha, dia y hora exacta sin conflictos de hora.
+      3. CONFIRMAR: Esta acción se debe realizar cuando el cliente confirma la hora y fecha de la cita despues de haberle brindado las opciones disponibles.
       -----------------------------
       Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
       

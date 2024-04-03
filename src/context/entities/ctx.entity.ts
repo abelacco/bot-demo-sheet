@@ -13,6 +13,9 @@ export class Ctx extends Document {
   
     @Prop()
     clientPhone: string;
+
+    @Prop()
+    parsedAvailableHours: string;
   
     @Prop()
     order: Product[];
@@ -49,6 +52,9 @@ export class Ctx extends Document {
   
     @Prop()
     step: string;
+
+    @Prop()
+    dateSelected: string;
   
     @Prop()
     attempts: number;

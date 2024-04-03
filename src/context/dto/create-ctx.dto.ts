@@ -23,11 +23,11 @@ export class CreateCtxDto {
     
     @IsString()
     @IsOptional()
-    message: string;
+    message?: string;
     
     @IsString()
     @IsOptional()
-    status: string;
+    status?: string;
     
     @IsString()
     @IsOptional()
@@ -36,4 +36,8 @@ export class CreateCtxDto {
     @IsString()
     @IsOptional()
     code?: string;
+
+    @IsString()
+    @IsOptional()
+    parsedAvailableHours?: string;
 }

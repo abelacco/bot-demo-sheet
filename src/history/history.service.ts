@@ -55,6 +55,7 @@ export class HistoryService {
 
   // Creas un nuevo mensaje en el historial y obtienes el historial completo
   async createAndGetHistoryParsed(messageEntry: IParsedMessage) {
+    messageEntry.content.id ? messageEntry.content = messageEntry.content.id : ''
     let newMessage = this.setModel(messageEntry, 'user');
 
     try {

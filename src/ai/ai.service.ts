@@ -47,4 +47,131 @@ export class AiService {
       return 'ERROR';
     }
   };
+
+   /**
+     * 
+     * @param messages 
+     * @param model 
+     * @param temperature 
+     * @returns 
+     */
+   async desiredDateFn  (
+    messages: ChatCompletionMessageParam[],
+    model?: string,
+    temperature = 0
+  ): Promise<{ date: string , hour: string}> {
+    try {
+        const completion = await this.openai.chat.completions.create({
+            model: model ?? this.model,
+            temperature: temperature,
+            messages,
+            functions: [
+                {
+                    name: "fn_desired_date",
+                    description: "determine the user's desired date in the format dd/mm/yyyy",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                          date: {
+                            type: "string",
+                            description: "Has to be in this form the date dd/mm/yyy",
+                        }
+
+                        },
+                        required: ["date"]
+                    }
+                }
+            ],
+            function_call: {
+                name: "fn_desired_date",
+            }
+        });
+        // Convert json to object
+        const response = JSON.parse(completion.choices[0].message.function_call.arguments);
+
+        return response;
+    } catch (err) {
+        console.error(err);
+        return {
+            date: '',
+            hour: ''
+        }
+    }
+};
+
+
+   /**
+     * 
+     * @param messages 
+     * @param model 
+     * @param temperature 
+     * @returns 
+     */
+   async checkData  (
+    messages: ChatCompletionMessageParam[],
+    model?: string,
+    temperature = 0
+  ): Promise<{ clientName: string , businessName: string , businessCategory: string, email:string , outOfContext: boolean}> {
+    try {
+        const completion = await this.openai.chat.completions.create({
+            model: model ?? this.model,
+            temperature: temperature,
+            messages,
+            functions: [
+                {
+                    name: "fn_check_data",
+                    description: "determine the user's information in the format clientName, businessName, businessCategory, email",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                          clientName: {
+                            type: "string",
+                            description: "Has to be the client name",
+                        },
+                        businessName: {
+                            type: "string",
+                            description: "Has to be the business name",
+
+                        },
+                        businessCategory: {
+                            type: "string",
+                            description: "Has to be the business category",
+
+                        },
+                        email: {
+                            type: "string",
+                            description: "Has to be the email",
+
+                        },
+                        outOfContext: {
+                            type: "boolean",
+                            description: "In case the user is out of context or not",
+
+                        },
+                      },
+                        required: [ "clientName", "businessName", "businessCategory", "email", "outOfContext"]
+                    }
+                }
+            ],
+            function_call: {
+                name: "fn_check_data",
+            }
+        });
+        // Convert json to object
+        const response = JSON.parse(completion.choices[0].message.function_call.arguments);
+
+        return response;
+    } catch (err) {
+        console.error(err);
+        return {
+            clientName: '',
+            businessName: '',
+            businessCategory: '',
+            email: '',
+            outOfContext: false
+        }
+    }
+};
+
+  
 }
