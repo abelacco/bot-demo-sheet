@@ -244,7 +244,7 @@ export enum PAYMENTSTATUS {
 export const NAME_TEMPLATES = {
   NOTIFY_PAYMENT: 'new_payment',
   NEW_CONVERSATION: 'new_conversation',
-  NOTIFY_APP: 'notify_admin ',
+  NOTIFY_APP: 'notify_admin',
 }
 
 export const BTN_ID = {
