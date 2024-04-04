@@ -12,7 +12,8 @@ import { HistoryService } from 'src/history/history.service';
 import { GoogleCalendarService } from 'src/google-calendar/google-calendar.service';
 import { Utilities } from 'src/context/helpers/utils';
 import { LangchainService } from 'src/langchain/langchain.service';
-
+import { Appointment, Calendar } from 'src/google-spreadsheet/entities';
+import { MENU, NAME_TEMPLATES } from 'src/context/helpers/constants';
 @Injectable()
 export class FlowsService {
   constructor(
@@ -79,17 +80,9 @@ export class FlowsService {
   {CLIENT_ANSWER}
   
   Posibles acciones a realizar:
-  1. INFO: Esta acción se debe realizar cuando el cliente pregunta a cerca:
-    - Información general sobre los servicios que ofrecemos.
-    - Precios.
-    - Servicios que ofrecemos.
-    - o esta iniciando la conversación con un saludo genérico.
-  2. AGENDAR: Esta acción se debe realizar cuando el cliente esta solicitando:
-    - Información sobre la disponibilidad para agendar una cita.
-    - Horarios disponibles.
-    - Fechas disponibles.
-    - Horarios de atención.
-    - Intenta agendar una cita.
+  1. AGENDAR: Esta acción se debe realizar cuando el cliente expresa su deseo de programar una cita.
+  2. INFO: Esta acción se debe realizar cuando el cliente desea hacer una pregunta o necesita más información.
+
   Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
   
   Respuesta ideal (INFO|AGENDAR):`;
@@ -141,8 +134,6 @@ export class FlowsService {
 - Utiliza la fecha y hora actuales como punto de partida para tus cálculos.
 - Si la expresión de tiempo no proporciona suficiente información para una fecha específica, usa la fecha {CURRENT_DAY}.
 - Asume un calendario estándar gregoriano sin tener en cuenta posibles eventos o festividades.
-- La respuesta siempre debe ser una fecha con el formato dd/mmmm/yyyy.
-- Nunca responder con un string que no sea una fecha.
 
   Ejemplo de expresiones a interpretar (estos ejemplos son hipotéticos y sirven como guía para tus cálculos y expresiones de tiempo similiares):
     Suponiendo que para este ejemplo la fecha actual es 02/04/2024:
@@ -158,6 +149,9 @@ export class FlowsService {
     10. Fin de semana próximo = 06/04/2024 - Asume el sábado como inicio del fin de semana
     11. Para fin de año = 31/12/2024
     12. En un mes a partir de ahora = 02/05/2024
+    13. Deseo agendar una cita  = 02/04/2024 - Fecha actual
+
+    Tu respuesta siempre debe ser una fecha con el formato dd/mm/yyyy.
 
     Respuesta ideal: {date: "dd/mm/yyyy"}
   `;
@@ -180,7 +174,10 @@ export class FlowsService {
                 role: 'system',
                 content: promptGetDateAndHour,
             },
-        ]);
+            
+          ],
+          'gpt-4'
+        );
 
         let fullDate = posibleDate?.date ? posibleDate.date : '';
         console.log('fullDate:', fullDate);
@@ -210,11 +207,11 @@ export class FlowsService {
         let btnText = 'Ver horarios';
         let sections = Utilities.generateOneSectionTemplate('Fechas disponibles:',slotsParsed)
         let bodyMessage = 'Por favor, selecciona una fecha y hora para agendar tu cita, si deseas otra fecha y hora por favor escribela.';
-        // let combineTextList = Utilities.generateOneSectionTemplate(bodyMessage,sections);
-        //     await this.historyService.setAndCreateAssitantMessage(
-        //       messageEntry,
-        //       combineTextList,
-        //     )
+        let combineTextList = Utilities.combineTextList(bodyMessage,sections);
+        await this.historyService.setAndCreateAssitantMessage(
+              messageEntry,
+              combineTextList,
+            )
         const newMessage = this.builderTemplate.buildInteractiveListMessage(messageEntry.clientPhone, btnText, sections , 'Lista',bodyMessage);
         await this.senderService.sendMessages(newMessage);
         ctx.step = '3';
@@ -228,13 +225,14 @@ export class FlowsService {
     try {
       let dateSelected = messageEntry.content;
       ctx.dateSelected = dateSelected;
-      let messageOne = 'Ahora para finalizar la reserva, por favor ingresa tu nombre, nombre de la empresa, rubro y correo electrónico.\n*Ingresa todos los datos en un solo mensaje.*\nEjemplo: "Alejandro , Chaskipizza , restaurantes , alejandro@gmail.com';
+      let messageOne = `Ahora para finalizar la reserva para el día ${dateSelected}, brindanos tu nombre.\n*Ingresa todos los datos en un solo mensaje.*`;
       await this.senderService.sendMessages(
         this.builderTemplate.buildTextMessage(
           messageEntry.clientPhone,
           messageOne,
         ),
       );
+      await this.historyService.setAndCreateAssitantMessage(messageEntry, messageOne);
       ctx.step = '4';
       await this.ctxService.updateCtx(ctx._id, ctx);
     }
@@ -248,20 +246,18 @@ export class FlowsService {
   
   ### Datos obligatorios para agendar una reunión:
   - Nombre del cliente
-  - Nombre de la empresa 
-  - Rubro de la empresa
-  - Correo electrónico del cliente
 
-  ### Registro de Conversación:
+  ### Registro de Conversación:(Cliente/Vendedor)
   {HISTORY}
 
   ### Respuesta del cliente:
   {CLIENT_ANSWER}
 
   ### Acciones a realizar:
-  Extraer los datos obligatorios para agendar una reunión.
-  Si el cliente no ha proporcionado el rubro de la empresa y puedes deducirlo, puedes sugerirlo.
-  En caso la respuesta del cliente no hace referencia a los datos solicitados, entonces debes poner en true la variable outOfContext.
+  -Extraer los datos obligatorios para agendar una reunión.
+  -No suponer datos, solo extraer la información proporcionada por el cliente.
+  -No inventar datos, solo extraer la información proporcionada por el cliente.
+  -En caso la respuesta del cliente no hace referencia a los datos solicitados, entonces debes poner en true la variable outOfContext.
   `;
 
   generatePromptConfirm = (question:string,history: string) => {
@@ -287,18 +283,36 @@ export class FlowsService {
       }
       const validateJsonAnswer = Utilities.validateBusinessInfo(response);
       if(validateJsonAnswer === 'OK'){
-        let confirmMessage = `Genial ${response.clientName} vamos a trabajar para ${response.businessName} mejore la atención al cliente. Tu cita es para el ${ctx.dateSelected}, te llegará a tu correo ${response.email} un recordatorio.`
+        // Vamos a crear la cita
+        ctx.clientname = response.clientName;
+        const newAppointment = new Appointment(ctx);
+        await this.googleSpreadsheetService.insertData(0,newAppointment);
+        const eventInfo = Utilities.parseForGoogleCalendar(ctx.dateSelected,60);
+        const responseCalendar = await this.googleCalendarService.createEventWithGoogleMeetAndNotifyAttendees(eventInfo.eventStart, eventInfo.eventEnd);
+        if(responseCalendar.status === 'confirmed') 
+        {
+        // Confirmar cita
+        let confirmMessage = `Genial ${response.clientName}. Tu cita es para el ${ctx.dateSelected}, uno de nuestros especilistas te estará contactando.`
         await this.senderService.sendMessages(
-          this.builderTemplate.buildTextMessage(
-            messageEntry.clientPhone,
-            confirmMessage,
-          ),
-        );
-        // guardamos lo del json en la base de datos
-        // agendamos la cita
-        // enviamos los mensajes de confirmación
-        // reseteamos el ctx
-        // actualizamos el step a 0
+            this.builderTemplate.buildTextMessage(
+              messageEntry.clientPhone,
+              confirmMessage,
+            ),
+          );
+        await this.historyService.setAndCreateAssitantMessage(messageEntry, confirmMessage)
+        await this.notifyPaymentFlow(ctx,responseCalendar.htmlLink);
+        ctx.step = '0'
+        await this.ctxService.updateCtx(ctx._id, ctx);
+        }
+        else {
+          let errorMessage = `Lo siento ${response.clientName}. No se pudo agendar tu cita.`
+          await this.senderService.sendMessages(
+            this.builderTemplate.buildTextMessage(
+              messageEntry.clientPhone,
+              errorMessage,
+            ),
+          );
+        }
 
       } else {
         let missingInfoMessage = validateJsonAnswer
@@ -314,6 +328,19 @@ export class FlowsService {
       console.error(err);
       return;
     }
+  }
+
+  async notifyPaymentFlow(ctx:Ctx ,url:string) {
+    const clientPhone = ctx.clientPhone;
+    const clientName = ctx.clientname;
+    const dateSelected = ctx.dateSelected;
+    const templateName:string = NAME_TEMPLATES.NOTIFY_APP;
+    const languageCode = 'es';
+    const bodyParameters = [clientName,clientPhone ,dateSelected]
+    const admin = '51947308823'
+    const template = this.builderTemplate.buildTemplateMessage(admin, templateName ,languageCode,null,bodyParameters);
+    await this.senderService.sendMessages(template);
+    await this.ctxService.updateCtx(ctx._id, ctx);
   }
 }
 

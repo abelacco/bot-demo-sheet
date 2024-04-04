@@ -1,3 +1,4 @@
+import { isInt } from 'class-validator';
 import { IParsedMessage } from '../entities/messageParsed';
 import { WSP_MESSAGE_TYPES } from 'src/common/constants';
 import { Ctx} from 'src/context/entities/ctx.entity';
@@ -29,10 +30,6 @@ export const receivedMessageValidator =
       }
       // debo llamar al servicio para responder que no es el mensaje esperado
       return 'NOT_VALID';
-    // case STEPS.INFO: // Manejo la subcuenta seleccionada
-    //   return 'analyzeData';
-    // case STEPS.DISPONIBILIDAD: // Estoy esperando una confirmación de seguir con la compra
-    //     return 'sendAvailability';
     case STEPS.DATE_SELECTED: // Estoy esperando que selecciones un paquete
       if (isInteractiveMessage(entryMessage)) {
         return 'preconfirmFlow';
@@ -43,11 +40,13 @@ export const receivedMessageValidator =
     case STEPS.EXTRA_DATA:
       if(isTextMessage(entryMessage)) {
         return 'checkExtaDataFlow';
+      } else if(isInteractiveMessage(entryMessage)){
+        return 'preconfirmFlow'
       } else {
         return 'NOT_VALID'
       }
     case STEPS.CONFIRM_APPOINMENT:
-      if(isInteractiveMessage(entryMessage)) {
+      if(isTextMessage(entryMessage)) {
         return 'confirmAppointment';
       }
       

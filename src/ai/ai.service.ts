@@ -59,7 +59,7 @@ export class AiService {
     messages: ChatCompletionMessageParam[],
     model?: string,
     temperature = 0
-  ): Promise<{ date: string , hour: string}> {
+  ): Promise<{ date: string}> {
     try {
         const completion = await this.openai.chat.completions.create({
             model: model ?? this.model,
@@ -74,7 +74,7 @@ export class AiService {
                         properties: {
                           date: {
                             type: "string",
-                            description: "Has to be in this form the date dd/mm/yyy",
+                            description: "dd/mm/yyyy",
                         }
 
                         },
@@ -93,9 +93,8 @@ export class AiService {
     } catch (err) {
         console.error(err);
         return {
-            date: '',
-            hour: ''
-        }
+            date: ''        
+          }
     }
 };
 
@@ -111,7 +110,7 @@ export class AiService {
     messages: ChatCompletionMessageParam[],
     model?: string,
     temperature = 0
-  ): Promise<{ clientName: string , businessName: string , businessCategory: string, email:string , outOfContext: boolean}> {
+  ): Promise<{ clientName: string , outOfContext: boolean}> {
     try {
         const completion = await this.openai.chat.completions.create({
             model: model ?? this.model,
@@ -128,28 +127,13 @@ export class AiService {
                             type: "string",
                             description: "Has to be the client name",
                         },
-                        businessName: {
-                            type: "string",
-                            description: "Has to be the business name",
-
-                        },
-                        businessCategory: {
-                            type: "string",
-                            description: "Has to be the business category",
-
-                        },
-                        email: {
-                            type: "string",
-                            description: "Has to be the email",
-
-                        },
                         outOfContext: {
                             type: "boolean",
                             description: "In case the user is out of context or not",
 
                         },
                       },
-                        required: [ "clientName", "businessName", "businessCategory", "email", "outOfContext"]
+                        required: [ "clientName","outOfContext"]
                     }
                 }
             ],
@@ -165,9 +149,6 @@ export class AiService {
         console.error(err);
         return {
             clientName: '',
-            businessName: '',
-            businessCategory: '',
-            email: '',
             outOfContext: false
         }
     }

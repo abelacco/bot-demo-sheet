@@ -212,9 +212,6 @@ export class ChainIntentService {
         - Tambien indicarle al cliente que podría agendar una cita con un especialista para resolver sus dudas.
         - El mensaje no debe exceder los 300 caracteres.
         - Usa emojis de manera estratégica para hacer la comunicación más amigable.
-        - La respuesta debe ser para whatapp
-        - La respuesta debe ser acorde a la pregunta del cliente y además en funcion al historial de chat.
-        - Sugiere seguir con el proceso en caso ya se han mencionado fechas y datos del cliente
         
         Recuerda, tu enfoque debe ser siempre maximizar la satisfacción del cliente mediante respuestas claras, informativas y personalizadas, promoviendo una relación positiva con nuestra marca.
         
@@ -234,7 +231,7 @@ export class ChainIntentService {
         `
       );
       const model = new ChatOpenAI({ modelName: process.env.OPENAI_MODEL });
-      const retriever = vectorstore.asRetriever(10);
+      const retriever = vectorstore.asRetriever(2);
       const chain = RunnableSequence.from([
         {
           question: (input) => input.question,

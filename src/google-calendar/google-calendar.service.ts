@@ -13,7 +13,7 @@ export class GoogleCalendarService {
     this.jwtClient = new JWT({
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      scopes: ['https://www.googleapis.com/auth/calendar'],
+      scopes: ['https://www.googleapis.com/auth/calendar','https://www.googleapis.com/auth/calendar.events'],
     });
 
     this.calendar = google.calendar({ version: 'v3', auth: this.jwtClient as any });
@@ -50,7 +50,8 @@ export class GoogleCalendarService {
    */
 
   async findAvailableSlots(calendarId: string = 'abel3121@gmail.com', dateString: string): Promise<{day:string,hours: string[] }> {
-    const date = moment(dateString, 'DD-MM-YYYY').format('YYYY-MM-DD');
+    const date = 
+    moment(dateString, 'DD-MM-YYYY').format('YYYY-MM-DD');
     const timeZone = 'America/Lima';
     const format = 'HH:mm';
     const timeMin = moment.tz(date + 'T09:00:00', timeZone);
@@ -107,4 +108,79 @@ export class GoogleCalendarService {
       throw new Error('Failed to find available slots');
     }
   }
+
+  async createEvent(
+    calendarId: string,
+    eventStart: string,
+    eventEnd: string,
+    summary: string,
+    description?: string
+  ): Promise<calendar_v3.Schema$Event> {
+    const event = {
+      summary: summary,
+      description: description,
+      start: {
+        dateTime: eventStart,
+        timeZone: 'America/Lima',
+      },
+      end: {
+        dateTime: eventEnd,
+        timeZone: 'America/Lima',
+      },
+      // Añade más propiedades según necesites
+    };
+  
+    try {
+      const response = await this.calendar.events.insert({
+        calendarId: calendarId,
+        requestBody: event,
+      });
+  
+      return response.data;
+    } catch (error) {
+      console.error('Error al crear evento en Google Calendar:', error);
+      throw new Error('Failed to create event in Google Calendar');
+    }
+  }
+
+  async createEventWithGoogleMeetAndNotifyAttendees(
+    eventStart: string,
+    eventEnd: string,
+    calendarId: string = 'abel3121@gmail.com',
+    summary: string='Reunión con el equipo de Ali Bot',
+    description?: string): Promise<calendar_v3.Schema$Event> {
+    try {
+        
+        const event = {
+            summary: summary,
+            description: description,
+            start: {
+                dateTime: eventStart, // Ejemplo: '2024-03-29T09:00:00-05:00'
+                timeZone: 'America/Lima',
+            },
+            end: {
+                dateTime: eventEnd, // Ejemplo: '2024-03-29T10:00:00-05:00'
+                timeZone: 'America/Lima',
+            },
+            conferenceData: {
+              createRequest: { requestId: `hangoutsMeet-${Date.now()}` },
+            },
+
+        };
+
+        const response = await this.calendar.events.insert({
+            calendarId: calendarId,
+            requestBody: event,
+            conferenceDataVersion: 1, // Importante para que se genere el link de Meet
+            // sendUpdates: 'all' // Importante para enviar notificaciones por email a los asistentes
+        });
+
+        return response.data;
+    } catch (error) {
+        console.error('Error al crear evento en Google Calendar con Google Meet y notificar a los asistentes:', error);
+        throw new Error('Failed to create event in Google Calendar with Google Meet and notify attendees');
+    }
+}
+
+  
 }

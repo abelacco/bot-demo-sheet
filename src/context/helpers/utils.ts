@@ -48,6 +48,7 @@ export class Utilities {
 
     static today(timeZone = 'America/Lima') {
         return moment().tz(timeZone).format('DD/MM/YYYY');
+        // example: 29/04/2024
     }
 
     static addBusinessDays(dateTimeString, daysToAdd, timeZone = 'America/Lima') {
@@ -181,7 +182,7 @@ export class Utilities {
                     {
                         title: menuTitle,
                         rows: spots.hours.map((hour: any, index: any) => ({
-                            id: spots.day + hour,
+                            id: spots.day + ' ' + hour,
                             title: spots.day,
                             description: hour,
                             // description: `Límite: ${item.limit}`,
@@ -190,6 +191,35 @@ export class Utilities {
             ]
     }
 
+    // static combineTextList(bodyMessage,sections) {
+
+    // const dates = {};
+
+    // // Agrupa las horas por fecha
+    // for (const row of sections[0].rows) {
+    //     const [date, time] = row.id.split(' ');
+    //     if (!dates[date]) {
+    //         dates[date] = [];
+    //     }
+    //     dates[date].push(time);
+    // }
+
+    // // Construye el mensaje final
+    // for (const [date, times] of Object.entries(dates)) {
+    //     bodyMessage += `${date}: ${(times as string[]).join(', ')}\n`;
+    // }
+
+    // return bodyMessage;
+    // }
+
+    static combineTextList(bodyMessage,sections) {
+            bodyMessage += 'Escoge una de estas opciones:\n'
+        sections[0].rows.forEach((option, index) => {
+            bodyMessage += `-${option.id}\n`;
+          });
+      
+          return bodyMessage.trim();
+    }
     static isWithinBusinessHours(dateTimeString, timeZone = 'America/Lima') {
         if (!dateTimeString || dateTimeString.trim() === '') {
             return true;
@@ -227,24 +257,18 @@ export class Utilities {
         if (!info.clientName) {
             missingFields.push("- Tu nombre");
         }
-        if (!info.businessName) {
-            missingFields.push("- El nombre de tu negocio");
-        }
-        if (!info.businessCategory) {
-            missingFields.push("- La categoría de tu negocio");
-        }
-        if (!info.email) {
-            missingFields.push("- Tu correo electrónico");
-        } else if (!validateEmail(info.email)) {
-            // Si el email no está vacío pero es inválido
-            missingFields.push("- Tu correo electrónico no es correcto");
-        }
+        // if (!info.email) {
+        //     missingFields.push("- Tu correo electrónico");
+        // } else if (!validateEmail(info.email)) {
+        //     // Si el email no está vacío pero es inválido
+        //     missingFields.push("- Tu correo electrónico no es correcto");
+        // }
     
-        // Función auxiliar para validar el formato del email
-        function validateEmail(email) {
-            var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email.toLowerCase());
-        }
+        // // Función auxiliar para validar el formato del email
+        // function validateEmail(email) {
+        //     var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        //     return re.test(email.toLowerCase());
+        // }
     
         // Construir y devolver el mensaje final
         if (missingFields.length > 0) {
@@ -253,6 +277,73 @@ export class Utilities {
             return "OK";
         }
     }
+    /**
+    * Parsea una cadena de fecha y hora en formato español a un objeto moment en una zona horaria específica.
+    * 
+    * @param dateStr Cadena de fecha y hora en formato 'D de MMMM hh:mm a', p. ej., '12 de abril 12:00 pm'.
+    * @param year El año en el que ocurre el evento.
+    * @param timezone La zona horaria en la que se debe interpretar la fecha y hora.
+    * @returns Un objeto moment representando la fecha y hora en la zona horaria especificada.
+    */
+   static parseSpanishDateTimeToMoment(dateStr: string, year: number = 2024, timezone: string = 'America/Lima') {
+     // Añade el año al input para completar la fecha
+     const dateInputWithYear = `${dateStr} ${year}`;
+ 
+     // Crear un objeto moment usando el formato del input y la zona horaria especificada
+     const dateMoment = moment.tz(dateInputWithYear, 'D [de] MMMM hh:mm a', 'es', timezone);
+ 
+     return dateMoment;
+   }
+
+       /**
+     * Convierte una fecha y hora en español a un objeto moment.
+     * @param {string} dateStr - Fecha en formato "DD de MMMM HH:mm a", ejemplo: "12 de abril 12:00 pm".
+     * @param {number} year - Año para completar la fecha.
+     * @param {string} timeZone - Zona horaria para la fecha.
+     * @returns {moment.Moment} Objeto moment representando la fecha y hora.
+     */
+       static convertDate(dateStr: string, year: number = new Date().getFullYear(), timeZone: string = 'America/Lima'): moment.Moment {
+        const spanishMonthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+        const [day, monthName, time, meridiem] = dateStr.split(/ de | /);
+        const month = spanishMonthNames.indexOf(monthName.toLowerCase());
+        const formattedDateStr = `${year}-${month + 1}-${day} ${time} ${meridiem}`;
+        return moment.tz(formattedDateStr, "YYYY-M-D hh:mm a", timeZone);
+    }
+
+    /**
+     * Añade minutos a un objeto moment y devuelve el nuevo objeto moment.
+     * @param {moment.Moment} momentObj - Objeto moment a modificar.
+     * @param {number} minutes - Minutos a añadir.
+     * @returns {moment.Moment} Nuevo objeto moment después de añadir los minutos.
+     */
+    static addMinutes(momentObj: moment.Moment, minutes: number): moment.Moment {
+        return momentObj.clone().add(minutes, 'minutes');
+    }
+
+     /**
+   * Convierte una cadena de texto con fecha y hora en un objeto listo para usar con Google Calendar.
+   * @param dateStr La cadena de texto con la fecha y hora, p. ej., "12 de abril 12:00 pm".
+   * @param duration La duración del evento en minutos.
+   * @returns Un objeto con las propiedades `start` y `end` en formato ISO para Google Calendar.
+   */
+  static parseForGoogleCalendar(dateStr: string, duration: number) {
+    // Supongamos que la fecha está en un formato como "12 de abril 12:00 pm"
+    // y que deseas usar la zona horaria de Lima para todas las conversiones.
+    const format = "D [de] MMMM hh:mm a";
+    const timeZone = "America/Lima";
+
+    // Convertir la cadena de fecha de inicio a un objeto moment en la zona horaria de Lima.
+    const start = moment.tz(dateStr, format, 'es', timeZone);
+
+    // Crear la fecha de finalización sumando la duración al inicio.
+    const end = start.clone().add(duration, 'minutes');
+
+    // Devolver los objetos de fecha de inicio y finalización en formato ISO para Google Calendar.
+    return {
+        eventStart: start.toISOString(),
+        eventEnd: end.toISOString(),
+    };
+  }
     
 
 }

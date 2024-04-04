@@ -55,6 +55,9 @@ export class Ctx extends Document {
 
     @Prop()
     dateSelected: string;
+
+    @Prop()
+    email: string;
   
     @Prop()
     attempts: number;
