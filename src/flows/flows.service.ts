@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { BuilderTemplatesService } from 'src/builder-templates/builder-templates.service';
 import { Ctx } from 'src/context/entities/ctx.entity';
 import axios from 'axios';
@@ -42,12 +42,75 @@ export class FlowsService {
     return getImage.url;
   }
 
+
+  PROMPT_WELCOME = `Como asistente virtual de Ali IA, tu primer contacto con el cliente es crucial para establecer una relación amigable y de confianza. A partir del PRIMER_MENSAJE_DEL_CLIENTE, debes ofrecer una bienvenida cálida, responder a su consulta de manera precisa y aprovechar para informar sobre nuestros servicios, precios y la opción de agendar una cita con un especialista.
+
+  INSTRUCCIONES:
+   - Comienza con un saludo afectuoso y una bienvenida que haga sentir al cliente especial en su primer contacto.
+   - Debes indicarle que eres un Asistente en entrenamiento y que estás aquí para ayudarlo.
+   - Analiza el PRIMER_MENSAJE_DEL_CLIENTE para entender y responder claramente a su consulta, usando la información de la BASE_DE_DATOS.
+   - Informa sobre los servicios que ofrecemos, destacando brevemente las características principales, beneficios y precios.
+   - Invita al cliente a agendar una cita con un especialista para una asesoría más detallada o personalizada.
+   - Mantén la respuesta dentro de los 200 caracteres, utilizando emojis para hacer la interacción más amigable y cercana.
+   
+   Tu objetivo es maximizar la satisfacción del cliente desde el primer mensaje, brindando información valiosa y demostrando el alto nivel de atención y soporte que ofrecemos.
+   
+   ### CONTEXTO
+   ----------------
+   PRIMER_MENSAJE_DEL_CLIENTE:
+   {question}
+   ----------------
+   BASE_DE_DATOS:
+   {context}
+   ----------------
+   
+   Sigue estas instrucciones para asegurar una acogida cálida y una interacción informativa con el cliente, resaltando la accesibilidad y el valor de nuestros servicios de chatbots.`
+
+  PROMPT_INFO = `Como asistente virtual de Ali IA, tu tarea es brindar información precisa y detallada sobre nuestros servicios de chatbots de ventas e informes, utilizando exclusivamente la información contenida en la BASE_DE_DATOS. Debes analizar tanto el HISTORIAL_DE_CHAT como la INTERROGACIÓN_DEL_CLIENTE para ofrecer respuestas personalizadas y útiles. Asegúrate de seguir estas INSTRUCCIONES detalladamente:
+   
+  INSTRUCCIONES:
+    - Analizar el HISTORIAL_DE_CHAT para comprender el contexto de la conversación y proporcionar respuestas personalizadas.
+    - Debes responder a la INTERROGACIÓN_DEL_CLIENTE de manera clara y detallada, utilizando información precisa de la BASE_DE_DATOS y alineado al HISTORIAL_DE_CHAT
+    - NO SALUDES , NO USES HOLA O BUENOS DIAS , SOLO RESPONDE A LA PREGUNTA DEL CLIENTE
+    - Dirige todas las consultas hacia información específica sobre nuestros servicios de chatbots, utilizando datos precisos de la BASE_DE_DATOS.
+    - Si el cliente desvía la conversación de nuestros servicios principales, redirígelo amablemente hacia los temas de interés.
+    - Asegúrate de solicitar detalles adicionales de manera amigable si la pregunta del cliente no es clara.
+    - Tambien indicarle al cliente que podría agendar una cita con un especialista para resolver sus dudas.
+    - El mensaje no debe exceder los 200 caracteres.
+    - Usa emojis de manera estratégica para hacer la comunicación más amigable.
+    
+    Recuerda, tu enfoque debe ser siempre maximizar la satisfacción del cliente mediante respuestas claras, informativas y personalizadas, promoviendo una relación positiva con nuestra marca.
+    
+    ### CONTEXTO
+    ETAPA DE LA CONVERSACIÓN:
+    Ya se le ha dado la bienvenidad al cliente y ahora esta interesado en saber más sobre nuestros servicios.
+    ----------------
+    HISTORIAL_DE_CHAT:
+    {chatHistory}
+    ----------------
+    BASE_DE_DATOS:
+    {context}
+    ----------------
+    INTERROGACIÓN_DEL_CLIENTE:
+    {question}
+    ----------------
+    
+    Sigue estas directrices cuidadosamente para asegurar una interacción efectiva y amigable con el cliente, destacando la calidad y el valor de nuestros servicios de chatbots.
+    `
+
+
+
   sendInfoFlow = async (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) => {
     try {
       const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
-      const question = messageEntry.content;
-
-      const { response } = await this.langChainService.runChat(history, question);
+      const question = messageEntry.content; 
+      let prompt = this.PROMPT_INFO;
+      if(!ctx.step) {
+        prompt = this.PROMPT_WELCOME
+        ctx.step = '0';
+      }
+      await this.ctxService.updateCtx(ctx._id, ctx);
+      const { response } = await this.langChainService.runChat(history, question, prompt);
       const chunks = response.split(/(?<!\d)\.\s+/g);
       for (const chunk of chunks) {
         const newMessage =
@@ -94,7 +157,7 @@ export class FlowsService {
   async analyzeDataFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
     try {
       const prompt = this.generateAnalyzePrompt(messageEntry.content,historyParsed);
-      console.log('ANAL', prompt);
+      Logger.log('ANALYZE_PROMPT');
       const response = await this.aiService.createChat([
         {
           role: 'system',
@@ -102,13 +165,11 @@ export class FlowsService {
         },
       ]);
       if(response === 'INFO') {
+        Logger.log('INFO ACTION');
         await this.sendInfoFlow(ctx, messageEntry, historyParsed);
-        // ctx.step = '1';
       } else {
-        console.log('AGENDAR');
+        Logger.log('AGENDAR ACTION');
         await this.availabilityFlow(ctx, messageEntry, historyParsed);
-        // ctx.step = '2';
-        // await this.ctxService.updateCtx(ctx._id, ctx);
       }
     } catch (err) {
       console.log(`[ERROR]:`, err);
@@ -169,6 +230,8 @@ export class FlowsService {
     try {
         // Suponiendo que generatePromptFilter, aiService.desiredDateFn y Utilities están definidos anteriormente
         const promptGetDateAndHour = this.generatePromptFilter(historyParsed,messageEntry.content);
+        Logger.log('GETDATEANDHOUR PROMPT');
+        // Logger.log('PROMPT:', promptGetDateAndHour);
         const posibleDate = await this.aiService.desiredDateFn([
             {
                 role: 'system',
@@ -180,7 +243,7 @@ export class FlowsService {
         );
 
         let fullDate = posibleDate?.date ? posibleDate.date : '';
-        console.log('fullDate:', fullDate);
+        Logger.log('FULLDATE:', fullDate);
         if (!fullDate) {
           fullDate = Utilities.today();
         }
@@ -206,13 +269,13 @@ export class FlowsService {
         let slotsParsed = Utilities.convertSchedule(availableSlots)
         let btnText = 'Ver horarios';
         let sections = Utilities.generateOneSectionTemplate('Fechas disponibles:',slotsParsed)
-        let bodyMessage = 'Por favor, selecciona una fecha y hora para agendar tu cita, si deseas otra fecha y hora por favor escribela.';
+        let bodyMessage = 'Para una mejor experiencia , te brindo las fechas disponibles para agendar tu cita, si deseas otra fecha y hora por favor escribela.';
         let combineTextList = Utilities.combineTextList(bodyMessage,sections);
         await this.historyService.setAndCreateAssitantMessage(
               messageEntry,
               combineTextList,
             )
-        const newMessage = this.builderTemplate.buildInteractiveListMessage(messageEntry.clientPhone, btnText, sections , 'Lista',bodyMessage);
+        const newMessage = this.builderTemplate.buildInteractiveListMessage(messageEntry.clientPhone, btnText, sections , 'Fechas disponible',bodyMessage);
         await this.senderService.sendMessages(newMessage);
         ctx.step = '3';
         await this.ctxService.updateCtx(ctx._id, ctx);

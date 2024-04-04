@@ -8,6 +8,6 @@ export class LangchainController {
 
   @Post('runchat')
   async runChat(@Body() body) {
-    return await this.langchainService.runChat(body.history, body.question);
+    return await this.langchainService.runChat(body.history, body.question, body.prompt);
   }
 }

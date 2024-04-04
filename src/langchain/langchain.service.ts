@@ -12,7 +12,7 @@ export class LangchainService {
     private pineconeService: PineconeService
     ) {}
 
-  async runChat(history: Array<{role: string; content: string}> = [], question: string) {
+  async runChat(history: Array<{role: string; content: string} > = [], question: string, prompt:string) {
     try {
       const pinecone = await this.pineconeService.initPinecone();
       const index = pinecone.Index(process.env.PINECONE_INDEX_NAME);
@@ -30,7 +30,7 @@ export class LangchainService {
         }
       );
   
-      const chain = this.chainIntent.create(loadedVectorStore);
+      const chain = this.chainIntent.create(loadedVectorStore, prompt);
       const sanitizedQuestion = question.trim().replace("\n", " ");
   
       const response = await chain.invoke({
