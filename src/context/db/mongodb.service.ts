@@ -120,35 +120,35 @@ export class MongoDbService implements ICtxDao {
   //   }
   // }
 
-  // async findAll(props?: paginationMessageDto): Promise<Array<Doctor>> {
+  async findAll(props?: any): Promise<Array<Ctx>> {
 
-  //   try {
-  //     const QUERY = {};
+    try {
+      const QUERY = {};
 
-  //     if(props.name) {
-  //       QUERY["name"] = { $regex: props.name, $options: 'i' };
-  //     }
+      // if(props.name) {
+      //   QUERY["clientPhone"] = { $regex: props.name, $options: 'i' };
+      // }
 
-  //     if(props.phone) {
-  //       QUERY["phone"] = props.phone;
-  //     }
+      // if(props.phone) {
+      //   QUERY["phone"] = props.phone;
+      // }
 
-  //     if(props.speciality) {
-  //       QUERY["speciality"] = { $regex: props.speciality, $options: 'i' };
-  //     }
-  //     if(!isNaN(props.modality)) {
-  //       QUERY["modality"] = props.modality;
-  //     }
+      // if(props.speciality) {
+      //   QUERY["speciality"] = { $regex: props.speciality, $options: 'i' };
+      // }
+      // if(!isNaN(props.modality)) {
+      //   QUERY["modality"] = props.modality;
+      // }
 
 
-  //     const results = await this._doctorModel.find(QUERY);
+      const results = await this._ctxModel.find(QUERY);
 
-  //     return results;
-  //   } catch (error) {
-  //     if (error instanceof mongo.MongoError) mongoExceptionHandler(error);
-  //     else throw error;
-  //   }
-  // }
+      return results;
+    } catch (error) {
+      if (error instanceof mongo.MongoError) mongoExceptionHandler(error);
+      else throw error;
+    }
+  }
 
   // async findByName(name: string): Promise<Doctor> {
   //   try {

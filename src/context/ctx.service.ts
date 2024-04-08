@@ -25,6 +25,12 @@ export class CtxService {
     return message;
   }
 
+  async findAllCtx(): Promise<Array<Ctx>> {
+    //Busca mensaje por número de cliente
+    const messages = await this._db.findAll();
+    return messages;
+  }
+
   async updateCtx(id:string,updateCtx: UpdateCtxDto): Promise<Ctx> {
     //Busca mensaje por número de cliente
     const updatedMessage = await this._db.updateCtx(id,updateCtx);

@@ -8,7 +8,7 @@ export interface ICtxDao {
 
   // create(createDoctoDto: CreateDoctorDto): Promise<Doctor>;
 
-  // findAll(props?: FindDoctorDto): Promise<Array<Doctor>>;
+  findAll(props?: any): Promise<Array<Ctx>>;
     
   // findAllByPagination(paginationMessageDto: PaginationMessageDto): Promise<{ data: Message[]; total: number }>;
 
