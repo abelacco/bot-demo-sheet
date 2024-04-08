@@ -407,9 +407,11 @@ export class FlowsService {
     const templateName:string = NAME_TEMPLATES.NOTIFY_APP;
     const languageCode = 'es';
     const bodyParameters = [clientName,clientPhone ,dateSelected]
-    const admin = '51947308823'
-    const template = this.builderTemplate.buildTemplateMessage(admin, templateName ,languageCode,null,bodyParameters);
-    await this.senderService.sendMessages(template);
+    const admins = ['51947308823','51980827944']
+    for (const admin of admins) {
+      const template = this.builderTemplate.buildTemplateMessage(admin, templateName, languageCode, null, bodyParameters);
+      await this.senderService.sendMessages(template);
+  }
     await this.ctxService.updateCtx(ctx._id, ctx);
   }
   PROMPT_ANALYZE_AFTER_CONFIRM =  `Como una inteligencia artificial avanzada, tu tarea es analizar [HISTORIAL_CONVERSACION] y seleccionar la acción más adecuada a seguir.
