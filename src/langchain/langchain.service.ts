@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { OpenAIEmbeddings } from '@langchain/openai';
 import { PineconeStore } from "@langchain/pinecone";
 import { ChainIntentService } from './chain-intent.service';
 import { PineconeService } from 'src/pinecone/pinecone.service';

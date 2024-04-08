@@ -57,10 +57,16 @@ export class Ctx extends Document {
     dateSelected: string;
 
     @Prop()
+    datePreselected: string;
+
+    @Prop()
     email: string;
   
     @Prop()
     attempts: number;
+
+    @Prop()
+    eventId: string;
 }
 
 

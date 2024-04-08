@@ -13,7 +13,7 @@ import { GoogleCalendarService } from 'src/google-calendar/google-calendar.servi
 import { Utilities } from 'src/context/helpers/utils';
 import { LangchainService } from 'src/langchain/langchain.service';
 import { Appointment, Calendar } from 'src/google-spreadsheet/entities';
-import { MENU, NAME_TEMPLATES } from 'src/context/helpers/constants';
+import { MENU, NAME_TEMPLATES, STATUS_APPOINTMENT, STEPS } from 'src/context/helpers/constants';
 @Injectable()
 export class FlowsService {
   constructor(
@@ -169,7 +169,7 @@ export class FlowsService {
         await this.sendInfoFlow(ctx, messageEntry, historyParsed);
       } else {
         Logger.log('AGENDAR ACTION');
-        await this.availabilityFlow(ctx, messageEntry, historyParsed);
+        await this.checkAvailabilityFlow(ctx, messageEntry, historyParsed);
       }
     } catch (err) {
       console.log(`[ERROR]:`, err);
@@ -226,7 +226,7 @@ export class FlowsService {
   return mainPrompt;
   }
 
-  async availabilityFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed) {
+  async checkAvailabilityFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed) {
     try {
         // Suponiendo que generatePromptFilter, aiService.desiredDateFn y Utilities están definidos anteriormente
         const promptGetDateAndHour = this.generatePromptFilter(historyParsed,messageEntry.content);
@@ -277,7 +277,7 @@ export class FlowsService {
             )
         const newMessage = this.builderTemplate.buildInteractiveListMessage(messageEntry.clientPhone, btnText, sections , 'Fechas disponible',bodyMessage);
         await this.senderService.sendMessages(newMessage);
-        ctx.step = '3';
+        ctx.step = STEPS.DATE_SELECTED;
         await this.ctxService.updateCtx(ctx._id, ctx);
     } catch (err) {
         console.error(`[ERROR]:`, err);
@@ -286,8 +286,12 @@ export class FlowsService {
 
   async preconfirmFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
     try {
-      let dateSelected = messageEntry.content;
-      ctx.dateSelected = dateSelected;
+      ctx.dateSelected ? ctx.datePreselected = ctx.dateSelected : ctx.dateSelected = messageEntry.content;
+      if(ctx.clientname) {
+        ctx.dateSelected = messageEntry.content;
+        return await this.changeDateFlow(ctx, messageEntry, historyParsed);
+      }
+      let dateSelected = ctx.dateSelected;
       let messageOne = `Ahora para finalizar la reserva para el día ${dateSelected}, brindanos tu nombre.\n*Ingresa todos los datos en un solo mensaje.*`;
       await this.senderService.sendMessages(
         this.builderTemplate.buildTextMessage(
@@ -296,7 +300,7 @@ export class FlowsService {
         ),
       );
       await this.historyService.setAndCreateAssitantMessage(messageEntry, messageOne);
-      ctx.step = '4';
+      ctx.step = STEPS.EXTRA_DATA;
       await this.ctxService.updateCtx(ctx._id, ctx);
     }
     catch (err) {
@@ -304,6 +308,8 @@ export class FlowsService {
       return;
     }
   }
+
+
 
   PROMPT_CONFIRM = `Eres un asistente especializado en determinar si un cliente cumple con todos los requisitos para agendar una reunion. Tu objetivo es analizar la conversación y detectar si el cliente ha mencionado:
   
@@ -355,6 +361,7 @@ export class FlowsService {
         if(responseCalendar.status === 'confirmed') 
         {
         // Confirmar cita
+        ctx.eventId = responseCalendar.id;
         let confirmMessage = `Genial ${response.clientName}. Tu cita es para el ${ctx.dateSelected}, uno de nuestros especilistas te estará contactando.`
         await this.senderService.sendMessages(
             this.builderTemplate.buildTextMessage(
@@ -364,11 +371,11 @@ export class FlowsService {
           );
         await this.historyService.setAndCreateAssitantMessage(messageEntry, confirmMessage)
         await this.notifyPaymentFlow(ctx,responseCalendar.htmlLink);
-        ctx.step = '0'
+        ctx.step = STEPS.AFTER_CONFIRM
         await this.ctxService.updateCtx(ctx._id, ctx);
         }
         else {
-          let errorMessage = `Lo siento ${response.clientName}. No se pudo agendar tu cita.`
+          let errorMessage = `Lo siento ${response.clientName}. No se pudo agendar tu cita, en unos minutos una persona de nuestro equipo se pondrá en contacto contigo.`
           await this.senderService.sendMessages(
             this.builderTemplate.buildTextMessage(
               messageEntry.clientPhone,
@@ -404,6 +411,224 @@ export class FlowsService {
     const template = this.builderTemplate.buildTemplateMessage(admin, templateName ,languageCode,null,bodyParameters);
     await this.senderService.sendMessages(template);
     await this.ctxService.updateCtx(ctx._id, ctx);
+  }
+  PROMPT_ANALYZE_AFTER_CONFIRM =  `Como una inteligencia artificial avanzada, tu tarea es analizar [HISTORIAL_CONVERSACION] y seleccionar la acción más adecuada a seguir.
+  --------------------------------------------------------
+  [HISTORIAL_CONVERSACION]:
+  {HISTORY}
+
+  [QUESTION]:
+  {CLIENT_ANSWER}
+  
+  Posibles acciones a realizar:
+  1. REANGENDAR: Esta acción se debe realizar cuando el cliente expresa su deseo de reprogramar o cancelar su cita.
+  2. INFO: Esta acción se debe realizar cuando el cliente desea hacer más pregúntas de nuestros servicios.
+
+  Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  
+  Respuesta ideal (INFO|REANGENDAR):`
+
+  generatePromptAnalyzeAfterConfirm = (question:string,history: string) => {
+    return this.PROMPT_ANALYZE_AFTER_CONFIRM.replace('{HISTORY}', history).replace('{CLIENT_ANSWER}', question);
+  }
+// Analiza si es que el cliente desea reagendar o solo esta pidiendo información
+  async anlyzeAfterConfirmFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+      const prompt = this.generatePromptAnalyzeAfterConfirm(messageEntry.content,historyParsed);
+      const response = await this.aiService.createChat([
+        {
+          role: 'system',
+          content: prompt,
+        },
+      ]);
+      if(response === 'INFO') {
+        await this.sendInfoAAFlow(ctx, messageEntry, historyParsed);
+      }
+      else {
+        await this.rescheduleAppointmentFlow(ctx, messageEntry, historyParsed);
+      }
+
+    }
+    catch (err) {
+      console.error(err);
+      return;
+    }
+  }
+  PROMPT_INFO_AA = 
+  `Como asistente virtual de Ali IA, tu tarea es brindar información precisa y detallada sobre nuestros servicios de chatbots de ventas e informes, utilizando exclusivamente la información contenida en la BASE_DE_DATOS para responder la pregunta del cliente. 
+  
+  ### CONTEXTO
+  ETAPA DE LA CONVERSACIÓN:
+  El cliente ya cuenta con una cita programada y desea saber más sobre nuestros servicios.
+  En esta etapa solo damos información de nuestos servicios ya no invitamos a agendar una cita porque ya la tiene programada
+  con un especialista de Ali IA.
+
+  ----------------
+  CITA_PROGRAMADA:
+  [date_selected]
+  ----------------
+  HISTORIAL_DE_CHAT:
+  {chatHistory}
+  ----------------
+  BASE_DE_DATOS:
+  {context}
+  ----------------
+  INTERROGACIÓN_DEL_CLIENTE:
+  {question}
+  ----------------
+  
+  Asegúrate de seguir estas INSTRUCCIONES detalladamente:
+   
+  INSTRUCCIONES:
+    - Debes analizar tanto el HISTORIAL_DE_CHAT como la INTERROGACIÓN_DEL_CLIENTE para ofrecer respuestas personalizadas y útiles que se ajusten a la conversación.
+    - Analizar el HISTORIAL_DE_CHAT para comprender el contexto de la conversación y proporcionar respuestas de acuerdo a la conversacion.
+    - Debes responder a la INTERROGACIÓN_DEL_CLIENTE de manera clara y detallada, utilizando información precisa de la BASE_DE_DATOS y alineado al HISTORIAL_DE_CHAT
+    - NO SALUDES , NO USES HOLA O BUENOS DIAS , SOLO RESPONDE A LA PREGUNTA DEL CLIENTE
+    - Dirige todas las consultas hacia información específica sobre nuestros servicios de chatbots, utilizando datos precisos de la BASE_DE_DATOS.
+    - Si el cliente desvía la conversación de nuestros servicios principales, redirígelo amablemente hacia los temas de interés.
+    - Asegúrate de solicitar detalles adicionales de manera amigable si la pregunta del cliente no es clara.
+    - El mensaje no debe exceder los 200 caracteres.
+    - De manera amable indícale que en la cita que ya programo podrá resolver todas sus dudas con un especialista de Ali IA.
+    - Usa emojis de manera estratégica para hacer la comunicación más amigable.
+    - En caso el cliente desea conocer cuando es su cita debes usar la fecha [date_selected] para responder.
+    - Recuerda, tu enfoque debe ser siempre maximizar la satisfacción del cliente mediante respuestas claras, informativas y personalizadas, promoviendo una relación positiva con nuestra marca.
+
+    Sigue estas directrices cuidadosamente para asegurar una interacción efectiva y amigable con el cliente, destacando la calidad y el valor de nuestros servicios de chatbots.
+    `
+  async sendInfoAAFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+      const history = await this.historyService.findAll(messageEntry.clientPhone, messageEntry.chatbotNumber)
+      const question = messageEntry.content; 
+      const prompt = this.PROMPT_INFO_AA.replace(/\[date_selected\]/g, ctx.dateSelected);
+      const { response } = await this.langChainService.runChat(history, question, prompt);
+      const chunks = response.split(/(?<!\d)\.\s+/g);
+      for (const chunk of chunks) {
+        const newMessage =
+          await this.historyService.setAndCreateAssitantMessage(
+            messageEntry,
+            chunk,
+          );
+        await this.senderService.sendMessages(
+          this.builderTemplate.buildTextMessage(
+            messageEntry.clientPhone,
+            chunk,
+          ),
+        );
+      }
+
+    } catch (err) {
+      console.log(`[ERROR]:`, err);
+      return;
+    }
+
+  }
+
+  async rescheduleAppointmentFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+     const messageOne = `Por favor ${ctx.clientname}, para reprogramar tu cita del día ${ctx.dateSelected}, brindanos la fecha y hora que deseas.`
+      await this.senderService.sendMessages(
+        this.builderTemplate.buildTextMessage(
+          messageEntry.clientPhone,
+          messageOne,
+        ),
+      );
+      await this.historyService.setAndCreateAssitantMessage(messageEntry, messageOne);
+      ctx.step = STEPS.WAITING_FOR_RESCHEDULE;
+      await this.ctxService.updateCtx(ctx._id, ctx);
+    }
+    catch (err) {
+      console.error(err);
+      return;
+    }
+  }
+
+  PROMPT_ANALYZE_RE_SCHEDULE =  `Como una inteligencia artificial avanzada, tu tarea es analizar [HISTORIAL_CONVERSACION] y seleccionar la acción más adecuada a seguir.
+  --------------------------------------------------------
+  [HISTORIAL_CONVERSACION]:
+  {HISTORY}
+
+  [QUESTION]:
+  {CLIENT_ANSWER}
+  
+  Posibles acciones a realizar:
+  1. REANGENDAR: Esta acción se debe realizar cuando el cliente expresa su deseo deseo de reagendar o ha brindado una fecha y hora para reprogramar su cita.
+  2. INFO: Esta acción se debe realizar cuando el cliente no ha dado una fecha y hora para reprogramar su cita.
+
+  Tu objetivo es comprender la intención del cliente y seleccionar la acción más adecuada en respuesta a su declaración.
+  
+  Respuesta ideal (INFO|REANGENDAR):`
+  
+  generatePromptAnalyzeReSchedule = (question:string,history: string) => {
+    return this.PROMPT_ANALYZE_RE_SCHEDULE.replace('{HISTORY}', history).replace('{CLIENT_ANSWER}', question);
+  }
+
+  // Analiza si es que el cliente ha confirmado si desea reprogrmar o no
+  async analyzeAnswerFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+      const prompt = this.generatePromptAnalyzeReSchedule(messageEntry.content,historyParsed);
+      const response = await this.aiService.createChat([
+        {
+          role: 'system',
+          content: prompt,
+        },
+      ]);
+      // El cliente no ha confirmado si desea reprogramar
+      if(response === 'INFO') {
+        await this.sendInfoAAFlow(ctx, messageEntry, historyParsed);
+      }
+      // El cliente ha confirmado que desea reprogramar con una fecha  y hora
+      else {
+        await this.checkAvailabilityFlow(ctx, messageEntry, historyParsed);
+      }
+
+    }
+    catch (err) {
+      console.error(err);
+      return;
+    }
+  }
+
+  async changeDateFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) {
+    try {
+      // Actualizar estado de la cita en la hoja de cálculo
+      await this.googleSpreadsheetService.updateAppointmentStatusByDateAndClientPhone(ctx.datePreselected, ctx.clientPhone, STATUS_APPOINTMENT.REPROGAMADA);
+      // Eliminar cita anterior en calendar
+      await  this.googleCalendarService.updateEventStatusToCancelled(undefined,ctx.eventId);
+      // Seguir el flujo de crear cita
+      const newAppointment = new Appointment(ctx);
+      await this.googleSpreadsheetService.insertData(0,newAppointment);
+      const eventInfo = Utilities.parseForGoogleCalendar(ctx.dateSelected,60);
+      const responseCalendar = await this.googleCalendarService.createEventWithGoogleMeetAndNotifyAttendees(eventInfo.eventStart, eventInfo.eventEnd);
+      if(responseCalendar.status === 'confirmed') {
+      // Confirmar cita
+      ctx.eventId = responseCalendar.id;
+      let messageOne = `Gracias ${ctx.clientname}, tu cita ha sido reprogramada para el día ${ctx.dateSelected}.`;
+      await this.senderService.sendMessages(
+        this.builderTemplate.buildTextMessage(
+          messageEntry.clientPhone,
+          messageOne,
+        ),
+      );
+      await this.historyService.setAndCreateAssitantMessage(messageEntry, messageOne)
+      await this.notifyPaymentFlow(ctx,responseCalendar.htmlLink);
+      ctx.step = STEPS.AFTER_CONFIRM;
+      await this.ctxService.updateCtx(ctx._id, ctx);
+      }
+      else {
+        let errorMessage = `Lo siento ${ctx.clientname}. No se pudo agendar tu cita, en unos minutos una persona de nuestro equipo se pondrá en contacto contigo.`
+        await this.senderService.sendMessages(
+          this.builderTemplate.buildTextMessage(
+            messageEntry.clientPhone,
+            errorMessage,
+          ),
+        );
+      }
+
+    }
+    catch (err) {
+      console.error(err);
+      return;
+    }
   }
 }
 
@@ -520,7 +745,7 @@ export class FlowsService {
   // generataInitFlowPrompt = (history: string) => {
   //   return this.PROMPT_INIT_FLOW.replace('{HISTORY}', history);
   // }
-// async availabilityFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed) {
+// async checkAvailabilityFlow(ctx: Ctx, messageEntry: IParsedMessage, historyParsed) {
 //   try {
 //       // Suponiendo que generatePromptFilter, aiService.desiredDateFn y Utilities están definidos anteriormente
 //       const promptGetDateAndHour = this.generatePromptFilter(historyParsed,messageEntry.content);
@@ -643,7 +868,7 @@ export class FlowsService {
   //   ]);
   //   if(response === 'DISPONIBILIDAD') {
   //     console.log('DISPONIBILIDAD');
-  //     await this.availabilityFlow(ctx, messageEntry, historyParsed);
+  //     await this.checkAvailabilityFlow(ctx, messageEntry, historyParsed);
   //   }
   //   else {
   //     console.log('INFO');
@@ -1387,7 +1612,7 @@ export class FlowsService {
   // Respuesta ideal (INFO|DISPONIBILIDAD|CONFIRMAR):`;
 
   
-  // availabilityFlow = async (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) => {
+  // checkAvailabilityFlow = async (ctx: Ctx, messageEntry: IParsedMessage, historyParsed: string) => {
   //   try {
   //     const promptGetDateAndHour = this.generatePromptFilter(historyParsed);
   //     const posibleDate = await this.aiService.desiredDateFn([

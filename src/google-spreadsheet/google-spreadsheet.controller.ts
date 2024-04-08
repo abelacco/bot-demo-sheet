@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Put } from '@nestjs/common';
 import { GoogleSpreadsheetService } from './google-spreadsheet.service';
 
 @Controller('google-spreadsheet')
@@ -10,10 +10,22 @@ export class GoogleSpreadsheetController {
     return this.googleSpreadsheetService.insertData(data.sheetIndex, data.rowData);
   }
 
+  @Get('get-appointments-by-date')
+  getAppointmentsByDate(@Query('date') date: string, @Query('clientPhone') clientPhone: string) {
+    return this.googleSpreadsheetService.getListAppointmentsByDate(date, clientPhone);
+  }
+
+  @Put('update-appointments-by-date')
+  updateAppointment(@Query('date') date: string, @Query('clientPhone') clientPhone: string , @Query('status') status: string) {
+    return this.googleSpreadsheetService.updateAppointmentStatusByDateAndClientPhone(date, clientPhone, status);
+  }
+
   @Get('get-appointments')
   getAppointments() {
     return this.googleSpreadsheetService.getListAppointments();
   }
+
+
 
   @Get('get-products')
   getProducts() {

@@ -180,7 +180,51 @@ export class GoogleCalendarService {
         console.error('Error al crear evento en Google Calendar con Google Meet y notificar a los asistentes:', error);
         throw new Error('Failed to create event in Google Calendar with Google Meet and notify attendees');
     }
+  }
+
+  async findEventById(calendarId: string = 'abel3121@gmail.com', eventId: string): Promise<calendar_v3.Schema$Event> {
+    try {
+      const response = await this.calendar.events.get({
+        calendarId: calendarId,
+        eventId: eventId,
+    });
+    return response.data;    } 
+    catch (error) {
+        console.error('Error finding event by ID:', error.message);
+        throw new Error('Failed to find event by ID');
+    }
+  }
+
+  async updateEventStatusToCancelled(calendarId: string ='abel3121@gmail.com', eventId: string): Promise<string> {
+    try {
+        // Aquí asumimos que "cancelar" un evento significa eliminarlo.
+        // Si prefieres marcarlo de otra manera (ej. cambiar el título o descripción),
+        // deberías usar el método `events.update` en su lugar.
+        await this.calendar.events.delete({ calendarId, eventId });
+        console.log(`Event with ID ${eventId} was cancelled.`);
+        let message = `Event with ID ${eventId} was cancelled.`;
+        return message;
+    } catch (error) {
+        console.error('Error updating event status to cancelled:', error.message);
+        throw new Error('Failed to update event status to cancelled');
+    }
+  }
+
+  async findAndCancelEvent(calendarId: string = 'abel3121@gmail.com', eventId: string): Promise<void> {
+    try {
+        const event = await this.findEventById(calendarId, eventId);
+        if (event) {
+            await this.updateEventStatusToCancelled(calendarId, eventId);
+            console.log(`Event with ID ${eventId} was found and cancelled.`);
+        }
+    } catch (error) {
+        console.error('Error finding and cancelling event:', error.message);
+        throw new Error('Failed to find and cancel event');
+    }
 }
+
+
+
 
   
 }

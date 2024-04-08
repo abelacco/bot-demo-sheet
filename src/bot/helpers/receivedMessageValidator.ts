@@ -2,7 +2,7 @@ import { isInt } from 'class-validator';
 import { IParsedMessage } from '../entities/messageParsed';
 import { WSP_MESSAGE_TYPES } from 'src/common/constants';
 import { Ctx} from 'src/context/entities/ctx.entity';
-import { BTN_ID, STEPS } from 'src/context/helpers/constants';
+import {STEPS } from 'src/context/helpers/constants';
 
 
 
@@ -30,28 +30,36 @@ export const receivedMessageValidator =
       }
       // debo llamar al servicio para responder que no es el mensaje esperado
       return 'NOT_VALID';
-    case STEPS.DATE_SELECTED: // Estoy esperando que selecciones un paquete
+    case STEPS.DATE_SELECTED: // Estoy esperando que el usuario seleccione una fecha o pregunte por otra cosa
       if (isInteractiveMessage(entryMessage)) {
+        // Si es fecha seleccionada, debo enviar el flow de confirmacion de datos
         return 'preconfirmFlow';
       } else if(isTextMessage(entryMessage)) {
+        // LLamo al flow para responder infor general
         return 'analyzeDataFlow';
       }
       return 'NOT_VALID';
-    case STEPS.EXTRA_DATA:
+    case STEPS.EXTRA_DATA: // Estoy esperando que el usuario confirmen los datos adicionales o tambien puede que cambie de fecha
       if(isTextMessage(entryMessage)) {
+        // Entra al flujo para corrobar los datos extras
         return 'checkExtaDataFlow';
       } else if(isInteractiveMessage(entryMessage)){
+        // Asume que estas escogiendo otra fecha
         return 'preconfirmFlow'
       } else {
         return 'NOT_VALID'
       }
-    case STEPS.CONFIRM_APPOINMENT:
+    case STEPS.AFTER_CONFIRM: // Estoy esperando que el cliente reagende o haga preguntas adicionales
       if(isTextMessage(entryMessage)) {
-        return 'confirmAppointment';
+        return 'anlyzeAfterConfirmFlow';
       }
-      
-        return 'NOT_VALID';
-    default:
+      return 'NOT_VALID';
+    case STEPS.WAITING_FOR_RESCHEDULE:
+      if(isTextMessage(entryMessage)) {
+        return 'analyzeAnswerFlow';
+      }
+      return 'NOT_VALID';
+        default:
       return 'NOT_VALID';
   }
 };

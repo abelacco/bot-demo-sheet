@@ -1,15 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { StringOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
-import { RunnableSequence } from 'langchain/schema/runnable';
+import { ChatOpenAI } from '@langchain/openai';
+import { StringOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
 import { formatDocumentsAsString } from 'langchain/util/document';
 
 @Injectable()
 export class ChainIntentService {
     create(vectorstore, prompt:string) {
+      console.log(prompt);
       const questionPrompt = PromptTemplate.fromTemplate(prompt);
-      
+      const model = new ChatOpenAI({ modelName: process.env.OPENAI_MODEL, maxTokens: 120 });
+      const retriever = vectorstore.asRetriever(2);
+      const chain = RunnableSequence.from([
+        {
+          question: (input) => input.question,
+          chatHistory: (input) => input.chatHistory,
+          context: async (input) => {
+            const relevantDocs =await retriever.getRelevantDocuments(input.question);
+            const docsParsed = formatDocumentsAsString(relevantDocs);
+            console.log(docsParsed);
+            return docsParsed;
+          },
+        },
+        questionPrompt,
+        model,
+        new StringOutputParser(),
+      ]);
+      return chain;
+    }
+}
+
 
       // const questionPrompt = PromptTemplate.fromTemplate(
       //   `Como asistente virtual de Ali IA, tu tarea es brindar información precisa y detallada sobre nuestros servicios de chatbots de ventas e informes, utilizando exclusivamente la información contenida en la BASE_DE_DATOS. Debes analizar tanto el HISTORIAL_DE_CHAT como la INTERROGACIÓN_DEL_CLIENTE para ofrecer respuestas personalizadas y útiles. Asegúrate de seguir estas directrices detalladamente:
@@ -42,29 +63,6 @@ export class ChainIntentService {
       //   Sigue estas directrices cuidadosamente para asegurar una interacción efectiva y amigable con el cliente, destacando la calidad y el valor de nuestros servicios de chatbots.
       //   `
       // );
-
-      const model = new ChatOpenAI({ modelName: process.env.OPENAI_MODEL, maxTokens: 80 });
-      const retriever = vectorstore.asRetriever(2);
-      const chain = RunnableSequence.from([
-        {
-          question: (input) => input.question,
-          chatHistory: (input) => input.chatHistory,
-          context: async (input) => {
-            const relevantDocs =await retriever.getRelevantDocuments(input.question);
-            const prueba = formatDocumentsAsString(relevantDocs);
-            console.log(prueba);
-            return prueba;
-            // return formatDocumentsAsString(relevantDocs);
-          },
-        },
-        questionPrompt,
-        model,
-        new StringOutputParser(),
-      ]);
-      return chain;
-    }
-}
-
 
     //   const questionPrompt = PromptTemplate.fromTemplate(
     //     `
