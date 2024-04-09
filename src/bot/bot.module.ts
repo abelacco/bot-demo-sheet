@@ -6,6 +6,7 @@ import { CtxModule } from 'src/context/ctx.module';
 import { HistoryModule } from 'src/history/history.module';
 import { AiValidator } from './helpers/aiValidator';
 import { AiModule } from 'src/ai/ai.module';
+import { WspWebGatewayModule } from 'src/wsp-web-gateway/wsp-web-gateway.module';
 
 @Module({
   controllers: [BotController],
@@ -14,7 +15,8 @@ import { AiModule } from 'src/ai/ai.module';
     CtxModule,
     FlowsModule,
     HistoryModule,
-    AiModule
+    AiModule,
+    WspWebGatewayModule
     ],
   exports: [BotService],
 })

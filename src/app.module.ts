@@ -18,6 +18,7 @@ import { AiModule } from './ai/ai.module';
 import { HistoryModule } from './history/history.module';
 import { LangchainModule } from './langchain/langchain.module';
 import { PineconeModule } from './pinecone/pinecone.module';
+import { WspWebGatewayModule } from './wsp-web-gateway/wsp-web-gateway.module';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { PineconeModule } from './pinecone/pinecone.module';
       isGlobal: true,
     }),
     MongooseModule.forRoot(`${process.env.MONGODB}/${process.env.DB_NAME}`),
-    WspWebHookModule, SenderModule, CtxModule, BuilderTemplatesModule, FlowsModule, GeneralServicesModule , UserModule,BotModule, GoogleSpreadsheetModule, AiModule, HistoryModule, LangchainModule, PineconeModule ],
+    WspWebHookModule, SenderModule, CtxModule, BuilderTemplatesModule, FlowsModule, GeneralServicesModule , UserModule,BotModule, GoogleSpreadsheetModule, AiModule, HistoryModule, LangchainModule, PineconeModule, WspWebGatewayModule, WspWebGatewayModule ],
   controllers: [AppController],
   providers: [AppService],
 })

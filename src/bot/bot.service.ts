@@ -9,6 +9,7 @@ import { HistoryService } from 'src/history/history.service';
 import { AiValidator } from './helpers/aiValidator';
 import { AiService } from 'src/ai/ai.service';
 import { Ctx } from 'src/context/entities/ctx.entity';
+import { WhatsappGateway } from 'src/wsp-web-gateway/wsp-web-gateway.gateway';
 
 
 @Injectable()
@@ -19,7 +20,8 @@ export class BotService {
     private readonly ctxService: CtxService,
     private readonly historyService: HistoryService,
     private readonly aiValidatorService: AiValidator,
-    private aiService: AiService
+    private aiService: AiService,
+    private gatewayService: WhatsappGateway
   ) {
 
   }
@@ -34,6 +36,7 @@ export class BotService {
       Logger.log( `NO CLIENT MESSAGE`, 'BOT SERVICE');
       return 'OK'
     }
+    this.gatewayService.server.emit("newMessage");
     //Busca mensaje por número de cliente
     const ctx = await this.ctxService.findOrCreateCtx(parsedMessage);
     Logger.log( `CTX  ${JSON.stringify(ctx)} `, 'BOT SERVICE');
