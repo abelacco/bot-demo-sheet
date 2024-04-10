@@ -1,6 +1,5 @@
-import { Inject, OnModuleInit } from "@nestjs/common";
-import { MessageBody, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
-import { tap } from "rxjs";
+import { OnModuleInit } from "@nestjs/common";
+import { MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { Server } from 'socket.io';
 
 
