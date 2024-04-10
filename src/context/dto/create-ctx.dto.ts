@@ -1,6 +1,6 @@
 import { IsDate, IsNumber, IsOptional, IsString } from "class-validator";
 
-export class CreateMessageDto {
+export class CreateCtxDto {
     @IsString()
     @IsOptional()
     clientName: string;
@@ -23,11 +23,11 @@ export class CreateMessageDto {
     
     @IsString()
     @IsOptional()
-    message: string;
+    message?: string;
     
     @IsString()
     @IsOptional()
-    status: string;
+    status?: string;
     
     @IsString()
     @IsOptional()
@@ -36,4 +36,8 @@ export class CreateMessageDto {
     @IsString()
     @IsOptional()
     code?: string;
+
+    @IsString()
+    @IsOptional()
+    parsedAvailableHours?: string;
 }

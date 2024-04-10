@@ -1,8 +1,8 @@
-import e from 'express';
+import { isInt } from 'class-validator';
 import { IParsedMessage } from '../entities/messageParsed';
 import { WSP_MESSAGE_TYPES } from 'src/common/constants';
-import { Message } from 'src/context/entities/message.entity';
-import { BTN_ID, PACK_ID, STEPS } from 'src/context/helpers/constants';
+import { Ctx} from 'src/context/entities/ctx.entity';
+import {STEPS } from 'src/context/helpers/constants';
 
 
 
@@ -13,11 +13,12 @@ import { BTN_ID, PACK_ID, STEPS } from 'src/context/helpers/constants';
 // Si recibe que el carrito de compras esta en el paso select_provider , entonces el mensaje que reciba debe ser de tipo interactive
 // Si recibe que el carrito de compras esta en el paso select_payment , entonces el mensaje que reciba debe ser de tipo interactive
 // Si recibe que el carrito de compras esta en el paso submit_voucher , entonces el mensaje que reciba debe ser de tipo image
-export const receivedMessageValidator = (
-  ctx: Message,
+export const receivedMessageValidator =  
+(
+  ctx: Ctx,
   entryMessage: IParsedMessage,
 ) => {
-  let currentStep = ctx.step;
+  let currentStep = ctx.step || STEPS.INIT;
   if( typeof entryMessage.content === 'string' && entryMessage.content.toUpperCase() === 'RESET') {
     return 'resetExpenseFlow';
   }
@@ -25,73 +26,40 @@ export const receivedMessageValidator = (
     case STEPS.INIT: // Respondo al primer saludo
       if (isTextMessage(entryMessage)) {
         // Debo llamar al servicio para responder
-        return 'initFlow';
+        return 'analyzeDataFlow';
       }
       // debo llamar al servicio para responder que no es el mensaje esperado
       return 'NOT_VALID';
-    case STEPS.ACCOUNT_SELECTED: // Estoy esperando que selecciones un tipo de gasto
+    case STEPS.DATE_SELECTED: // Estoy esperando que el usuario seleccione una fecha o pregunte por otra cosa
       if (isInteractiveMessage(entryMessage)) {
-        return 'subAccountsListFlow'
-      }
-      return 'NOT_VALID';
-    case STEPS.SUBACCOUNT_SELECTED: // Manejo la subcuenta seleccionada
-    if(isInteractiveMessage(entryMessage)) {
-      if(hasSpecificTitle(entryMessage, 'VER MÁS')) {
-        return 'subAccountsListFlow';
-      } else {
-        return 'getDescriptionFlow';
-      }
-    }
-    return 'NOT_VALID';
-    case STEPS.DESCRIPTION_INSERTED: // Estoy esperando una confirmación de seguir con la compra
-        if(isTextMessage(entryMessage)) {
-          return 'getAmountFlow';
-        }
-        return 'NOT_VALID';
-    case STEPS.AMOUNT_INSERTED: // Estoy esperando que ingreses o confirmes tu DNI
-      if (isTextMessage(entryMessage)){
-        return 'getDateFlow';
-      
-      }
-        return 'NOT_VALID';
-    case STEPS.DATE_SELECTED: // Estoy esperando que selecciones un paquete
-      if (isInteractiveMessage(entryMessage)) {
-        if(hasSpecificContentId(entryMessage,BTN_ID.CURRENT_DATE) ) {
-          return 'confirmExpenseFlow';
-        } 
-        else {
-          return 'getDifferentDateFlow';
-        }
+        // Si es fecha seleccionada, debo enviar el flow de confirmacion de datos
+        return 'preconfirmFlow';
       } else if(isTextMessage(entryMessage)) {
-        return 'confirmExpenseFlow';
+        // LLamo al flow para responder infor general
+        return 'analyzeDataFlow';
       }
       return 'NOT_VALID';
-    case STEPS.CONFIRM_EXPENSE:
-      if(isInteractiveMessage(entryMessage)) {
-        if(hasSpecificContentId(entryMessage,BTN_ID.CONFIRM_GENERAL) ) {
-          return 'createExpenseFlow';
-        }else {
-          return 'resetExpenseFlow';
-        }
+    case STEPS.EXTRA_DATA: // Estoy esperando que el usuario confirmen los datos adicionales o tambien puede que cambie de fecha
+      if(isTextMessage(entryMessage)) {
+        // Entra al flujo para corrobar los datos extras
+        return 'checkExtaDataFlow';
+      } else if(isInteractiveMessage(entryMessage)){
+        // Asume que estas escogiendo otra fecha
+        return 'preconfirmFlow'
       } else {
-        return 'NOT_VALID';
-      }  
-    case STEPS.NEW_EXPENSE:
-      if(isInteractiveMessage(entryMessage)) {
-        if(hasSpecificContentId(entryMessage,BTN_ID.NEW_EXPENSE) ) {
-          return 'accountsListFlow';
-        } 
-        else if(hasSpecificContentId(entryMessage,BTN_ID.SAME_ACCOUNT)){
-          return 'subAccountsListFlow';
-        }
-
-        else {
-          return 'getDescriptionFlow';
-        }
+        return 'NOT_VALID'
       }
-      
-        return 'NOT_VALID';
-    default:
+    case STEPS.AFTER_CONFIRM: // Estoy esperando que el cliente reagende o haga preguntas adicionales
+      if(isTextMessage(entryMessage)) {
+        return 'anlyzeAfterConfirmFlow';
+      }
+      return 'NOT_VALID';
+    case STEPS.WAITING_FOR_RESCHEDULE:
+      if(isTextMessage(entryMessage)) {
+        return 'analyzeAnswerFlow';
+      }
+      return 'NOT_VALID';
+        default:
       return 'NOT_VALID';
   }
 };

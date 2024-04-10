@@ -1,4 +1,3 @@
-import { Utilities } from "./utils";
 
 //DATA PROPIA DE LA APLICACION
 export const MENU = [
@@ -199,13 +198,19 @@ export const SCHUDULE_LIST = [
 
 export const STEPS = {
   INIT: '0',
-  ACCOUNT_SELECTED: '1',
-  SUBACCOUNT_SELECTED: '2',
-  DESCRIPTION_INSERTED: '3',
-  AMOUNT_INSERTED: '4',
-  DATE_SELECTED: '5',
-  CONFIRM_EXPENSE: '6',
-  NEW_EXPENSE: '7',
+  INFO: '1',
+  DISPONIBILIDAD: '2',
+  DATE_SELECTED: '3',
+  EXTRA_DATA: '4',
+  CONFIRM_APPOINMENT: '5',
+  AFTER_CONFIRM: '6',
+  WAITING_FOR_RESCHEDULE: '7',
+};
+
+export const STATUS_APPOINTMENT = {
+  REPROGAMADA: 'REPROGAMADA',
+  CONFIRMADA: 'CONFIRMADA',
+  CANCELADA: 'CANCELADA',
 };
 
 // MENSAJES Y ID DE MENSAJES INTERACTIVOS
@@ -240,6 +245,7 @@ export enum PAYMENTSTATUS {
 export const NAME_TEMPLATES = {
   NOTIFY_PAYMENT: 'new_payment',
   NEW_CONVERSATION: 'new_conversation',
+  NOTIFY_APP: 'notify_admin',
 }
 
 export const BTN_ID = {

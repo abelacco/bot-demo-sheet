@@ -1,2 +1,2 @@
-export * from './create-message.dto';
-export * from './update-message.dto';
+export * from './create-ctx.dto';
+export * from './update-ctx.dto';

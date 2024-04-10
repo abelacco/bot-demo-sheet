@@ -1,31 +1,31 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, mongo } from 'mongoose';
-import { Message } from '../entities/message.entity';
-import { IMessageDao } from './messageDao';
+import { Ctx} from '../entities/ctx.entity';
+import { ICtxDao } from './ctxDao';
 // import { PaginationMessageDto } from '../dto/pagination.dto';
 import { mongoExceptionHandler } from 'src/common/exceptions';
-import { UpdateMessageDto } from '../dto';
 import { PAYMENTSTATUS } from '../helpers/constants';
+import { UpdateCtxDto } from 'src/bot/dto';
 
 
 @Injectable()
-export class MongoDbService implements IMessageDao {
+export class MongoDbService implements ICtxDao {
   constructor(
-    @InjectModel(Message.name) private readonly _messageModel: Model<Message>,
+    @InjectModel(Ctx.name) private readonly _ctxModel: Model<Ctx>,
   ) {}
 
   
-  async findOrCreate(clientPhone: string): Promise<Message> {
+  async findOrCreate(clientPhone: string): Promise<Ctx> {
     try{
-      const ctx = await this._messageModel.findOne({
-        workerPhone: clientPhone,
+      const ctx = await this._ctxModel.findOne({
+        clientPhone: clientPhone,
       });
   
       if (!ctx) {
         try {
-          const createMessage = new this._messageModel({
-            workerPhone: clientPhone,
+          const createMessage = new this._ctxModel({
+            clientPhone: clientPhone,
           });
           await createMessage.save();
           return createMessage;
@@ -42,11 +42,11 @@ export class MongoDbService implements IMessageDao {
       else throw error;
     }
   }
-  async updateMessage(id: string, updateMessageDto: UpdateMessageDto): Promise<Message> {
+  async updateCtx(id: string, updateCtxDto: UpdateCtxDto): Promise<Ctx> {
     try{
-      const updatedMessage = await this._messageModel.findByIdAndUpdate(
+      const updatedMessage = await this._ctxModel.findByIdAndUpdate(
       id,
-      updateMessageDto,
+      updateCtxDto,
       { new: true },
     );
     return updatedMessage;
@@ -57,11 +57,11 @@ export class MongoDbService implements IMessageDao {
     }
   }
 
-  async updateStatusByAppId(appointmentId: string ,updateMessageDto: UpdateMessageDto ): Promise<Message> {
+  async updateStatusByAppId(appointmentId: string ,updateCtxDto: UpdateCtxDto ): Promise<Ctx> {
     try{
-      const updatedMessage = await this._messageModel.findOneAndUpdate(
+      const updatedMessage = await this._ctxModel.findOneAndUpdate(
         { appointmentId }, // criterio de búsqueda
-        { $set: { status: updateMessageDto.status , code: updateMessageDto.code} }, // actualización
+        { $set: { status: updateCtxDto.status , code: updateCtxDto.code} }, // actualización
         { new: true } // opciones para devolver el documento actualizado
     );
     return updatedMessage;
@@ -72,9 +72,9 @@ export class MongoDbService implements IMessageDao {
     }
   }
 
-  // async findMessageByterm(term: string): Promise<Message> {
+  // async findMessageByterm(term: string): Promise<Ctx> {
   //   try{
-  //     const message = await this._messageModel.findOne({term});
+  //     const message = await this._ctxModel.findOne({term});
   //     return message;
   //   }
   //   catch(error){
@@ -98,9 +98,9 @@ export class MongoDbService implements IMessageDao {
   //     const offset = paginationMessageDto.offset || 0;
   
   //     // Realizar la consulta con filtros y paginación
-  //     const data = await this._messageModel.find(query).sort({ _id: -1 }).limit(limit).skip(offset);  
+  //     const data = await this._ctxModel.find(query).sort({ _id: -1 }).limit(limit).skip(offset);  
   //     // Obtener el conteo total de documentos que coinciden con los criterios de búsqueda
-  //     const total = await this._messageModel.countDocuments(query);
+  //     const total = await this._ctxModel.countDocuments(query);
   
   //     return {data, total};
   //   } catch (error) {
@@ -120,35 +120,35 @@ export class MongoDbService implements IMessageDao {
   //   }
   // }
 
-  // async findAll(props?: paginationMessageDto): Promise<Array<Doctor>> {
+  async findAll(props?: any): Promise<Array<Ctx>> {
 
-  //   try {
-  //     const QUERY = {};
+    try {
+      const QUERY = {};
 
-  //     if(props.name) {
-  //       QUERY["name"] = { $regex: props.name, $options: 'i' };
-  //     }
+      // if(props.name) {
+      //   QUERY["clientPhone"] = { $regex: props.name, $options: 'i' };
+      // }
 
-  //     if(props.phone) {
-  //       QUERY["phone"] = props.phone;
-  //     }
+      // if(props.phone) {
+      //   QUERY["phone"] = props.phone;
+      // }
 
-  //     if(props.speciality) {
-  //       QUERY["speciality"] = { $regex: props.speciality, $options: 'i' };
-  //     }
-  //     if(!isNaN(props.modality)) {
-  //       QUERY["modality"] = props.modality;
-  //     }
+      // if(props.speciality) {
+      //   QUERY["speciality"] = { $regex: props.speciality, $options: 'i' };
+      // }
+      // if(!isNaN(props.modality)) {
+      //   QUERY["modality"] = props.modality;
+      // }
 
 
-  //     const results = await this._doctorModel.find(QUERY);
+      const results = await this._ctxModel.find(QUERY);
 
-  //     return results;
-  //   } catch (error) {
-  //     if (error instanceof mongo.MongoError) mongoExceptionHandler(error);
-  //     else throw error;
-  //   }
-  // }
+      return results;
+    } catch (error) {
+      if (error instanceof mongo.MongoError) mongoExceptionHandler(error);
+      else throw error;
+    }
+  }
 
   // async findByName(name: string): Promise<Doctor> {
   //   try {

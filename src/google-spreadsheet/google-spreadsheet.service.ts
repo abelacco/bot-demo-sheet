@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { Utilities } from 'src/context/helpers/utils';
 
 @Injectable()
 export class GoogleSpreadsheetService {
@@ -44,6 +45,149 @@ export class GoogleSpreadsheetService {
         throw new Error('Failed to insert data into Google Sheets');
       }
     }
+
+    async getListAppointments(): Promise<any[]> {
+      try{
+        await this.doc.loadInfo();
+        const sheet = this.doc.sheetsByIndex[0];
+        const rows:any = await sheet.getRows();
+
+        const list = rows.map(row => {
+          return {
+            registerDate: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            dateSelected: row._rawData[1], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            clientname: row._rawData[2], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            clientPhone: row._rawData[3], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            status: row._rawData[4], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+          };
+        });
+        // const prueba = Utilities.parseListAppointments(list);
+        // console.log(prueba)
+        return list;
+      }
+      catch (error) {
+        console.error('Error al recuperar las citas:', error);
+        throw new Error('Failed to retrieve appointments');
+      }
+    }
+
+    async getListAppointmentsByDate(dateSelected: string, clientPhone: string): Promise<any[]> {
+      try {
+        await this.doc.loadInfo();
+        const sheet = this.doc.sheetsByIndex[0];
+        const rows: any = await sheet.getRows();
+    
+        // Filtra las filas que coinciden con dateSelected y clientPhone
+        const filteredList = rows.filter(row => {
+          return row._rawData[1].trim() === dateSelected && row._rawData[3].trim() === clientPhone;
+        }).map(row => {
+          return {
+            registerDate: row._rawData[0],
+            dateSelected: row._rawData[1],
+            clientName: row._rawData[2],
+            clientPhone: row._rawData[3],
+            status: row._rawData[4],
+          };
+        });
+    
+        return filteredList;
+      } catch (error) {
+        console.error('Error al recuperar las citas:', error);
+        throw new Error('Failed to retrieve appointments');
+      }
+    }
+
+    /**
+   * Actualiza el estado de una cita basada en la fecha seleccionada y el teléfono del cliente.
+   * @param dateSelected La fecha de la cita a actualizar.
+   * @param clientPhone El teléfono del cliente de la cita a actualizar.
+   * @param newStatus El nuevo estado para la cita.
+   */
+  async updateAppointmentStatusByDateAndClientPhone(dateSelected: string, clientPhone: string, newStatus: string): Promise<void> {
+    try {
+      await this.doc.loadInfo();
+      const sheet = this.doc.sheetsByIndex[0]; // Asume que las citas están en la primera hoja
+      const rows:any = await sheet.getRows();
+
+      // Encuentra la fila específica que coincide con la fecha seleccionada y el teléfono del cliente
+      const rowToUpdate = rows.find(row =>
+        row._rawData[1].trim() === dateSelected.trim() &&
+        row._rawData[3].trim() === clientPhone.trim()
+      );
+
+      if (rowToUpdate) {
+        // Actualiza el estado en la fila encontrada
+        rowToUpdate._rawData[4] = newStatus; // Asume que el nombre de la columna en tu hoja para el estado es "status"
+        console.log(rowToUpdate._rawData);
+        // Guarda los cambios en la hoja
+        await rowToUpdate.save();
+        console.log(`Estado actualizado para ${clientPhone} en la fecha ${dateSelected} a ${newStatus}.`);
+      } else {
+        console.log('No se encontró la cita para actualizar.');
+      }
+    } catch (error) {
+      console.error('Error al actualizar el estado de la cita:', error);
+      throw new Error('Failed to update appointment status');
+    }
+  }
+    
+
+    async getProducts(): Promise<any[]> {
+      try {
+        await this.doc.loadInfo(); // Carga la información de la hoja de cálculo
+        const sheet = this.doc.sheetsByTitle['Principales']; // Accede a la hoja por su título
+        if (!sheet) {
+          throw new Error('La hoja de Partidas no se encuentra en el documento.');
+        }
+        const rows:any = await sheet.getRows(); // Obtiene todas las filas de la hoja 'Partidas'
+    
+        // Transforma las filas en un array de objetos con la información relevante
+        const accounts = rows.map(row => {
+          return {
+            id: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            name: row._rawData[1], // Accede a la propiedad 'limite' utilizando la notación de corchetes,
+            price: row._rawData[3], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            description: row._rawData[2], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            active: row._rawData[5], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+            modifiers: row._rawData[7], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+          };
+        });
+    
+        return accounts;
+      } catch (error) {
+        console.error('Error al conectarse:', error.response?.data || error.message);
+        throw new Error('Error al conectarse:');
+      }
+    }
+
+    async getSubProducts(): Promise<any[]> {
+      try {
+        await this.doc.loadInfo(); // Carga la información de la hoja de cálculo
+        const sheet = this.doc.sheetsByTitle['Extras']; // Accede a la hoja por su título
+        if (!sheet) {
+          throw new Error('La hoja de Partidas no se encuentra en el documento.');
+        }
+        const rows:any = await sheet.getRows(); // Obtiene todas las filas de la hoja 'Partidas'
+    
+        // Transforma las filas en un array de objetos con la información relevante
+        const accounts = rows.map(row => {
+          return {
+            id: row._rawData[0], // Accede a la propiedad 'partida' utilizando la notación de corchetes
+            name: row._rawData[1], // Accede a la propiedad 'limite' utilizando la notación de corchetes,
+            price: row._rawData[3], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            description: row._rawData[2], // Accede a la propiedad 'acumulado' utilizando la notación de corchetes,
+            active: row._rawData[5], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+            modifiers: row._rawData[6], // Accede a la propiedad 'diferencia' utilizando la notación de corchetes,
+          };
+        });
+    
+        return accounts;
+      } catch (error) {
+        console.error('Error al conectarse:', error.response?.data || error.message);
+        throw new Error('Error al conectarse:');
+      }
+    }
+
 
 
     async getAvailableDay(): Promise<string> {

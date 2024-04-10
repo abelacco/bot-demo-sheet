@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CtxService } from './ctx.service';
 import { CtxController } from './ctx.controller';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Message, MessageSchema } from './entities/message.entity';
+import { Ctx, CtxSchema } from './entities/ctx.entity';
 import { MongoDbService } from './db/mongodb.service';
 
 @Module({
@@ -11,8 +11,8 @@ import { MongoDbService } from './db/mongodb.service';
   imports: [
     MongooseModule.forFeature([
       {
-        name: Message.name,
-        schema: MessageSchema,
+        name: Ctx.name,
+        schema: CtxSchema,
       },
     ]),
     ],
