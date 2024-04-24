@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IParsedMessage } from './entities/messageParsed';
 import { WspReceivedMessageDto } from 'src/common/dto';
-import { INTERACTIVE_REPLIES_TYPES, WSP_MESSAGE_TYPES } from 'src/common/constants';
+import {
+  INTERACTIVE_REPLIES_TYPES,
+  WSP_MESSAGE_TYPES,
+} from 'src/common/constants';
 import { receivedMessageValidator } from './helpers/receivedMessageValidator';
 import { FlowsService } from 'src/flows/flows.service';
 import { CtxService } from 'src/context/ctx.service';
@@ -10,47 +13,51 @@ import { AiValidator } from './helpers/aiValidator';
 import { AiService } from 'src/ai/ai.service';
 import { Ctx } from 'src/context/entities/ctx.entity';
 import { WhatsappGateway } from 'src/wsp-web-gateway/wsp-web-gateway.gateway';
-
+import { Utilities } from 'src/context/helpers/utils';
+import { Product } from 'src/context/interface';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class BotService {
-
   constructor(
     private readonly flowsService: FlowsService,
     private readonly ctxService: CtxService,
     private readonly historyService: HistoryService,
     private readonly aiValidatorService: AiValidator,
     private aiService: AiService,
-    private gatewayService: WhatsappGateway
-  ) {
-
-  }
+    private gatewayService: WhatsappGateway,
+  ) {}
 
   async proccessMessage(entryMessage: WspReceivedMessageDto) {
     // Deestructuración del mensaje de entrada
-    Logger.log( `INIT PROCCESSMESSAGE  `, 'BOT SERVICE');
+    Logger.log(`INIT PROCCESSMESSAGE  `, 'BOT SERVICE');
     const parsedMessage = await this.messageDestructurer(entryMessage);
-    Logger.log( `PARSED MESSAGE  ${JSON.stringify(parsedMessage)} `, 'BOT SERVICE');
-    //Si es otro tipo de mensaje 
-    if(parsedMessage === 'OKNO') {
-      Logger.log( `NO CLIENT MESSAGE`, 'BOT SERVICE');
-      return 'OK'
+    Logger.log(
+      `PARSED MESSAGE  ${JSON.stringify(parsedMessage)} `,
+      'BOT SERVICE',
+    );
+    //Si es otro tipo de mensaje
+    if (parsedMessage === 'OKNO') {
+      Logger.log(`NO CLIENT MESSAGE`, 'BOT SERVICE');
+      return 'OK';
     }
-    this.gatewayService.server.emit("newMessage");
+    this.gatewayService.server.emit('newMessage');
     //Busca mensaje por número de cliente
     const ctx = await this.ctxService.findOrCreateCtx(parsedMessage);
-    Logger.log( `CTX  ${JSON.stringify(ctx)} `, 'BOT SERVICE');
-    const history = await this.historyService.createAndGetHistoryParsed(parsedMessage);
+    Logger.log(`CTX  ${JSON.stringify(ctx)} `, 'BOT SERVICE');
+    const history = await this.historyService.createAndGetHistoryParsed(
+      parsedMessage,
+    );
     // const action = await this.analyzeMessage(ctx, history);
     const action = receivedMessageValidator(ctx, parsedMessage);
-    Logger.log( `THE ACTION IS: ${action} `, 'BOT SERVICE');
-    if(action === 'NOT_VALID') {
-      Logger.log( `ACTION NOT VALID`, 'BOT SERVICE');
-      await this.flowsService[action](ctx,parsedMessage);
+    Logger.log(`THE ACTION IS: ${action} `, 'BOT SERVICE');
+    if (action === 'NOT_VALID') {
+      Logger.log(`ACTION NOT VALID`, 'BOT SERVICE');
+      await this.flowsService[action](ctx, parsedMessage);
       return 'OK';
     } else {
-       await this.flowsService[action](ctx,parsedMessage, history);
-      Logger.log( `THE FLOW : ${action} WAS EXCUTED`, 'BOT SERVICE');
+      await this.flowsService[action](ctx, parsedMessage, history);
+      Logger.log(`THE FLOW : ${action} WAS EXCUTED`, 'BOT SERVICE');
     }
     return 'OK';
   }
@@ -61,61 +68,137 @@ export class BotService {
       clientName: '',
       clientPhone: '',
       type: '',
-      content: {}
-  }
-  // console.log( messageDto.entry[0].changes[0].value)
-  if(messageDto.entry[0].changes[0].value?.statuses && messageDto.entry[0].changes[0].value?.statuses[0].status) {
-    Logger.log('STATUS', messageDto.entry[0].changes[0].value?.statuses[0].status)
-      return 'OKNO'
-  }
-  const chatbotNumber = messageDto.entry[0].changes[0].value.metadata.display_phone_number;
-  const contact = messageDto.entry[0].changes[0].value.contacts[0];
-  const message = messageDto.entry[0].changes[0].value.messages[0];
+      content: {},
+    };
 
-  parsedMessage.clientName = contact.profile.name;
-  parsedMessage.clientPhone = contact.wa_id.startsWith('52') ? contact.wa_id.replace('521', '52') : contact.wa_id;
-  parsedMessage.type = message.type;
-  parsedMessage.chatbotNumber = chatbotNumber;
-  // Falta agregar VIDEO y AUDIO
-  // Falta agregar UNKNOW , EMOJIS , REACCIONES , STICKERS
-  // Falta agregar LOCATION y CONTACT
-  // Gestionar respuesta de estados del
-  switch (message.type) {
-    case WSP_MESSAGE_TYPES.INTERACTIVE:
-      const interactiveType = message.interactive.type;
-      if (interactiveType === INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY) {
-        parsedMessage.content = {
-          title: message.interactive[INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY].title,
-          id: message.interactive[INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY].id,
-        };
-        
+    if (
+      messageDto.entry[0].changes[0].value?.statuses &&
+      messageDto.entry[0].changes[0].value?.statuses[0].status
+    ) {
+      Logger.log(
+        'STATUS',
+        messageDto.entry[0].changes[0].value?.statuses[0].status,
+      );
+      return 'OKNO';
+    }
+    const chatbotNumber =
+      messageDto.entry[0].changes[0].value?.metadata.display_phone_number;
+    const contact = messageDto.entry[0].changes[0].value?.contacts[0];
+    const message = messageDto.entry[0].changes[0].value?.messages[0];
+
+    parsedMessage.clientName = contact.profile.name;
+    parsedMessage.clientPhone = contact.wa_id.startsWith('52')
+      ? contact.wa_id.replace('521', '52')
+      : contact.wa_id;
+    parsedMessage.type = message.type;
+    parsedMessage.chatbotNumber = chatbotNumber;
+    // Falta agregar VIDEO y AUDIO
+    // Falta agregar UNKNOW , EMOJIS , REACCIONES , STICKERS
+    // Falta agregar LOCATION y CONTACT
+    // Gestionar respuesta de estados del
+    switch (message.type) {
+      case WSP_MESSAGE_TYPES.INTERACTIVE:
+        const interactiveType = message.interactive.type;
+        if (interactiveType === INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY) {
+          parsedMessage.content = {
+            title:
+              message.interactive[INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY].title,
+            id: message.interactive[INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY].id,
+          };
+          // Guardamos los valores de cada interactive button en la base de datos para actuar de acuerdo a esa info
+          // Cada id de los botones interactivos debe generarse como prop:value
+          const { prop, value } = Utilities.parseIdFromInteractiveButtons(
+            message.interactive[INTERACTIVE_REPLIES_TYPES.BUTTON_REPLY].id,
+          );
+
+          let ctx = await this.ctxService.findOrCreateCtx({
+            clientPhone: parsedMessage.clientPhone,
+          });
+
+          if (
+            prop === 'chatbotNumber' ||
+            prop === 'clientName' ||
+            prop === 'clientPhone'
+          ) {
+            break;
+          } else if (prop !== 'order') {
+            ctx[prop] = value;
+          } else if (prop === 'order') {
+            const product: Product = {
+              id: randomUUID(),
+              type: 'traetment',
+              name: value,
+              quantity: 1,
+              active: true,
+            };
+
+            await this.ctxService.addProduct(ctx._id, product);
+            break;
+          }
+
+          await this.ctxService.updateCtx(ctx._id, ctx);
+
+          break;
+        } else if (interactiveType === INTERACTIVE_REPLIES_TYPES.LIST_REPLY) {
+          parsedMessage.content = {
+            title:
+              message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY].title,
+            id: message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY].id,
+            description:
+              message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY]
+                .description,
+          };
+
+          const { prop, value } = Utilities.parseIdFromInteractiveButtons(
+            message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY].id,
+          );
+
+          let ctx = await this.ctxService.findOrCreateCtx({
+            clientPhone: parsedMessage.clientPhone,
+          });
+
+          if (
+            prop === 'chatbotNumber' ||
+            prop === 'clientName' ||
+            prop === 'clientPhone'
+          ) {
+            break;
+          } else if (prop !== 'order') {
+            ctx[prop] = value;
+          } else if (prop === 'order') {
+            const product: Product = {
+              id: randomUUID(),
+              type: 'traetment',
+              name: value,
+              quantity: 1,
+              active: true,
+            };
+
+            await this.ctxService.addProduct(ctx._id, product);
+            break;
+          }
+
+          await this.ctxService.updateCtx(ctx._id, ctx);
+        }
         break;
-      } else if (interactiveType === INTERACTIVE_REPLIES_TYPES.LIST_REPLY) {
+      case WSP_MESSAGE_TYPES.BUTTON:
         parsedMessage.content = {
-          title: message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY].title,
-          id: message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY].id,
-          description: message.interactive[INTERACTIVE_REPLIES_TYPES.LIST_REPLY].description,
+          title: message.button.text,
+          payload: message.button.payload,
         };
-      }
-      break;
-    case WSP_MESSAGE_TYPES.BUTTON:
-      parsedMessage.content = {
-        title: message.button.text,
-        payload: message.button.payload,
-      };
-      
-      break;
-    case WSP_MESSAGE_TYPES.TEXT:
-      parsedMessage.content = message.text.body;
-      break;
-    case WSP_MESSAGE_TYPES.IMAGE:
-      parsedMessage.content = message.image.id
-      break;
-    default:
-      return;
-  }
 
-  return parsedMessage;
+        break;
+      case WSP_MESSAGE_TYPES.TEXT:
+        parsedMessage.content = message.text.body;
+        break;
+      case WSP_MESSAGE_TYPES.IMAGE:
+        parsedMessage.content = message.image.id;
+        break;
+      default:
+        return;
+    }
+
+    return parsedMessage;
   }
 
   async analyzeMessage(ctx: Ctx, historyParsed: any) {
@@ -146,14 +229,9 @@ export class BotService {
         },
       ]);
       return response;
-    } 
-    catch (err) {
+    } catch (err) {
       console.error(err);
       return 'ERROR';
     }
-
   }
-
-
-
 }
