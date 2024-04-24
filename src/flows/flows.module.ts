@@ -16,6 +16,17 @@ import { LangchainModule } from 'src/langchain/langchain.module';
   controllers: [FlowsController],
   providers: [FlowsService],
   exports: [FlowsService],
-  imports: [ CtxModule,BuilderTemplatesModule , UserModule, GeneralServicesModule, SenderModule, GoogleSpreadsheetModule, AiModule, HistoryModule , GoogleCalendarModule, LangchainModule]
+  imports: [
+    CtxModule,
+    BuilderTemplatesModule,
+    UserModule,
+    GeneralServicesModule,
+    SenderModule,
+    GoogleSpreadsheetModule,
+    AiModule,
+    HistoryModule,
+    GoogleCalendarModule,
+    LangchainModule,
+  ],
 })
 export class FlowsModule {}
