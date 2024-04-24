@@ -1,4 +1,3 @@
-
 //DATA PROPIA DE LA APLICACION
 export const MENU = [
   {
@@ -15,11 +14,10 @@ export const MENU = [
       {
         id: 'menu_1',
         title: 'Renovar mi plan',
-        description: '❌NO DISPONIBLE POR EL MOMENTO❌'
+        description: '❌NO DISPONIBLE POR EL MOMENTO❌',
       },
-
-    ]
-  }
+    ],
+  },
 ];
 
 export const PACK_ID = {
@@ -58,34 +56,29 @@ export const PACK_ID = {
   MLI_MES: {
     ID: 'MLI_MES',
     precio: 500,
-  }
+  },
 };
-
-
 
 export const MODALITY = {
   INTERCAMBIOS: 'INTERCAMBIOS',
   SEMANA: 'SEMANA',
   MES: 'MES',
-}
+};
 
 export const PLAN = {
-  MMV: 
-    {
-      PLAN_NAME: 'MI MEJOR VERSIÓN',
-      WPS_NAME:'MI MEJOR VERSIÓN 🧘‍♀️',
-    },
-  APLV: 
-    {
-      PLAN_NAME: 'APLV',
-      WPS_NAME:'APLV 🤱',
-    },
-  MLI: 
-    {
-      PLAN_NAME: 'MI LUNA INTERIOR',
-      WPS_NAME:'MI LUNA INTERIOR🌛',
-    },
-}
+  MMV: {
+    PLAN_NAME: 'MI MEJOR VERSIÓN',
+    WPS_NAME: 'MI MEJOR VERSIÓN 🧘‍♀️',
+  },
+  APLV: {
+    PLAN_NAME: 'APLV',
+    WPS_NAME: 'APLV 🤱',
+  },
+  MLI: {
+    PLAN_NAME: 'MI LUNA INTERIOR',
+    WPS_NAME: 'MI LUNA INTERIOR🌛',
+  },
+};
 
 export const PACK = [
   {
@@ -100,15 +93,13 @@ export const PACK = [
         id: PACK_ID.MMV_SEMANA.ID,
         title: 'MENÚ SEMANA',
         description: 'Precio: S/. 200',
-
       },
       {
         id: PACK_ID.MMV_MES.ID,
         title: 'MENÚ MES',
         description: 'Precio: S/. 400',
-
-      }
-    ]
+      },
+    ],
   },
   {
     title: PLAN.APLV.WPS_NAME,
@@ -117,21 +108,18 @@ export const PACK = [
         id: PACK_ID.APLV_INTERCAMBIOS.ID,
         title: 'INTERCAMBIOS',
         description: 'Precio: S/. 150',
-
       },
       {
         id: PACK_ID.APLV_SEMANA.ID,
         title: 'MENÚ SEMANA',
         description: 'Precio: S/. 280',
-
       },
       {
         id: PACK_ID.APLV_MES.ID,
         title: 'MENÚ MES',
         description: 'Precio: S/. 500',
-
-      }
-    ]
+      },
+    ],
   },
   {
     title: PLAN.MLI.WPS_NAME,
@@ -140,29 +128,20 @@ export const PACK = [
         id: PACK_ID.MLI_INTERCAMBIOS.ID,
         title: 'INTERCAMBIOS',
         description: 'Precio: S/. 150',
-
       },
       {
         id: PACK_ID.MLI_SEMANA.ID,
         title: 'MENÚ SEMANA',
         description: 'Precio: S/. 280',
-
       },
       {
         id: PACK_ID.MLI_MES.ID,
         title: 'MENÚ MES',
         description: 'Precio: S/. 500',
-
-      }
-    ]
-  }
-
+      },
+    ],
+  },
 ];
-
-
-
-
-
 
 export const SCHUDULE_LIST = [
   {
@@ -192,7 +171,7 @@ export const SCHUDULE_LIST = [
   {
     id: '7',
     title: ' 28/01/2024 10:00 am',
-  }
+  },
 ];
 // Pasos de la conversación
 
@@ -215,7 +194,6 @@ export const STATUS_APPOINTMENT = {
 
 // MENSAJES Y ID DE MENSAJES INTERACTIVOS
 
-
 // DEPRECATED
 export const TITLE_INT_BTN = {
   INTRODUCTION_TEMPLATE_A1: 'Buscar cuarto 🛏️',
@@ -232,8 +210,7 @@ export const TITLE_INT_BTN = {
   PAYMENTS_OPTIONS: ['Tarjeta 💳', 'Yape/Plin 📱', 'Efectivo'],
   SUBMIT_VOUCHER: 'Listo',
   PROVIDER_ACCEPT: 'Aceptar ✅',
-}
-
+};
 
 export enum PAYMENTSTATUS {
   PENDING = '0',
@@ -246,7 +223,7 @@ export const NAME_TEMPLATES = {
   NOTIFY_PAYMENT: 'new_payment',
   NEW_CONVERSATION: 'new_conversation',
   NOTIFY_APP: 'notify_admin',
-}
+};
 
 export const BTN_ID = {
   ACCEPT_DNI: 'accpt_dni',
@@ -260,7 +237,7 @@ export const BTN_ID = {
   NEW_EXPENSE: 'new_expense',
   SAME_ACCOUNT: 'same_account',
   SAME_SUBACCOUNT: 'same_subaccount',
-}
+};
 
 export const BTN_TITLE = {
   ACCEPT_DNI: 'Confirmar ✅',
@@ -274,7 +251,7 @@ export const BTN_TITLE = {
   NEW_EXPENSE: 'Nuevo egreso',
   SAME_ACCOUNT: 'Misma partida',
   SAME_SUBACCOUNT: 'Misma subpartida',
-}
+};
 
 export const BTN_OPT_CONFIRM_DNI = [
   {
@@ -286,7 +263,6 @@ export const BTN_OPT_CONFIRM_DNI = [
     title: BTN_TITLE.RETRY_DNI,
   },
 ];
-
 
 export const BTN_OPT_CONFIRM_GENERAL = [
   {
@@ -300,12 +276,10 @@ export const BTN_OPT_CONFIRM_GENERAL = [
 ];
 
 export const BTN_OPT_PAYMENT = [
-
   {
     id: BTN_ID.PAYMENT_YAPE,
     title: BTN_TITLE.PAYMENT_YAPE,
   },
-
 ];
 
 export const BTN_OPT_REPEAT = [
